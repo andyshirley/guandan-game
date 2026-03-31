@@ -32,6 +32,9 @@ export default function GameLobby() {
   const [finalState, setFinalState] = useState<GameStateData | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [, setLocation] = useLocation();
+  // 连局升级计数：己方（玩家+AI北）和对方（AI东+AI西）升级次数
+  const [myTeamWins, setMyTeamWins] = useState(0);
+  const [opponentTeamWins, setOpponentTeamWins] = useState(0);
 
   const saveGameMutation = trpc.game.finishGame.useMutation();
 
@@ -55,6 +58,12 @@ export default function GameLobby() {
     setFinalState(state);
     setView("result");
     setGameState(null);
+    // 更新升级计数
+    if (state.winningTeam === Team.Team1) {
+      setMyTeamWins(w => w + 1);
+    } else if (state.winningTeam === Team.Team2) {
+      setOpponentTeamWins(w => w + 1);
+    }
     if (isAuthenticated) {
       try {
         await saveGameMutation.mutateAsync({
@@ -70,6 +79,9 @@ export default function GameLobby() {
     setView("lobby");
     setGameState(null);
     setFinalState(null);
+    // 回大厅时重置计数
+    setMyTeamWins(0);
+    setOpponentTeamWins(0);
   };
 
   const handlePlayAgain = () => {
@@ -89,6 +101,8 @@ export default function GameLobby() {
         playerName={user?.name || "玩家"}
         onGameEnd={handleGameEnd}
         onBackToLobby={handleBackToLobby}
+        myTeamWins={myTeamWins}
+        opponentTeamWins={opponentTeamWins}
       />
     );
   }

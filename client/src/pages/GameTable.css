@@ -79,6 +79,42 @@
 }
 .gt-badge strong { color: #f0d060; }
 
+/* 级牌显示：打 X —— 金色高亮，比普通 badge 更显眼 */
+.gt-rank-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(212,175,55,0.22) 0%, rgba(240,208,96,0.12) 100%);
+  border: 1px solid rgba(212,175,55,0.55);
+  font-size: 12px;
+  color: #f0d060;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(212,175,55,0.18);
+}
+.gt-rank-badge strong { color: #ffe566; font-size: 14px; }
+
+/* 连局战绩：我方:X 对方:Y */
+.gt-score-badge {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.gt-score-my { color: #4ade80; }
+.gt-score-sep { color: #888; margin: 0 1px; }
+.gt-score-opp { color: #f87171; }
+
 .gt-status-pill {
   display: flex;
   align-items: center;

@@ -45,6 +45,8 @@ interface GameTableProps {
   playerName: string;
   onGameEnd: (finalState: GameStateData) => void;
   onBackToLobby: () => void;
+  myTeamWins?: number;
+  opponentTeamWins?: number;
 }
 
 interface PlayRecord {
@@ -92,6 +94,8 @@ export default function GameTable({
   playerName,
   onGameEnd,
   onBackToLobby,
+  myTeamWins = 0,
+  opponentTeamWins = 0,
 }: GameTableProps) {
   const [gameState, setGameState] = useState<GameStateData>(initialGameState);
   const [selectedCards, setSelectedCards] = useState<Card[]>([]);
@@ -454,14 +458,23 @@ export default function GameTable({
         </button>
 
         <div className="gt-header-center">
-          <div className="gt-badge">
-            <TrendingUp size={12} />
-            <span>升 <strong>{gameState.currentRank}</strong></span>
+          {/* 级牌显示：本局打 X */}
+          <div className="gt-rank-badge">
+            <Crown size={13} />
+            <span>打 <strong>{gameState.currentRank}</strong></span>
           </div>
           <div className="gt-badge">
             <RefreshCw size={12} />
             <span>第 {gameState.currentRound.roundNumber} 轮</span>
           </div>
+          {/* 连局战绩 */}
+          {(myTeamWins > 0 || opponentTeamWins > 0) && (
+            <div className="gt-score-badge">
+              <span className="gt-score-my">{myTeamWins}</span>
+              <span className="gt-score-sep">:</span>
+              <span className="gt-score-opp">{opponentTeamWins}</span>
+            </div>
+          )}
           <div className="gt-status-pill">
             {isAIThinking ? (
               <><Zap size={12} className="gt-pulse" />AI 思考中</>

@@ -110,6 +110,9 @@ export function identifyCardType(cards: Card[], currentRank: Rank): CardType | n
   if (isSequence(cards, currentRank)) return CardType.Sequence;
   const groups = groupCardsByRank(cards);
   const groupCount = Object.keys(groups).length;
+  // 大小王不能单独出牌（单张、对子、三张），只能一起出王炸
+  const hasJoker = cards.some(c => c.rank === Rank.SmallJoker || c.rank === Rank.BigJoker);
+  if (hasJoker) return null;
   if (cards.length === 3 && groupCount === 1) return CardType.Triple;
   if (cards.length === 2 && groupCount === 1) return CardType.Pair;
   if (cards.length === 1) return CardType.Single;
@@ -199,11 +202,13 @@ export function createInitialGameState(
   currentRank: Rank = Rank.Three
 ): GameStateData {
   const hands = dealCards();
+  // 发牌后对所有手牌按点数从小到大排序
+  const sortedHands = hands.map(h => sortCards(h, currentRank));
   const players: Player[] = [
-    { position: PlayerPosition.Player0, userId: 1, name: playerName, isAI: false, hand: hands[0], cardsRemaining: hands[0].length, isReady: true },
-    { position: PlayerPosition.Player1, userId: 0, name: "AI 东", isAI: true, hand: hands[1], cardsRemaining: hands[1].length, isReady: true },
-    { position: PlayerPosition.Player2, userId: 0, name: "AI 北", isAI: true, hand: hands[2], cardsRemaining: hands[2].length, isReady: true },
-    { position: PlayerPosition.Player3, userId: 0, name: "AI 西", isAI: true, hand: hands[3], cardsRemaining: hands[3].length, isReady: true },
+    { position: PlayerPosition.Player0, userId: 1, name: playerName, isAI: false, hand: sortedHands[0], cardsRemaining: sortedHands[0].length, isReady: true },
+    { position: PlayerPosition.Player1, userId: 0, name: "AI 东", isAI: true, hand: sortedHands[1], cardsRemaining: sortedHands[1].length, isReady: true },
+    { position: PlayerPosition.Player2, userId: 0, name: "AI 北", isAI: true, hand: sortedHands[2], cardsRemaining: sortedHands[2].length, isReady: true },
+    { position: PlayerPosition.Player3, userId: 0, name: "AI 西", isAI: true, hand: sortedHands[3], cardsRemaining: sortedHands[3].length, isReady: true },
   ];
 
   return {
