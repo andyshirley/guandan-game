@@ -1,0 +1,213 @@
+.game-lobby {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a472a 0%, #0f2818 100%);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding: 40px 20px;
+}
+
+.lobby-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 50px;
+}
+
+.lobby-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.game-title {
+  font-size: 64px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+  letter-spacing: 4px;
+}
+
+.game-subtitle {
+  font-size: 18px;
+  color: #aaa;
+  margin: 10px 0 0 0;
+}
+
+.user-section {
+  text-align: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.user-info {
+  font-size: 16px;
+}
+
+.username {
+  color: #ffd700;
+  font-weight: 600;
+}
+
+.login-prompt {
+  font-size: 16px;
+  color: #aaa;
+}
+
+.game-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+}
+
+.option-card {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 2px solid rgba(255, 215, 0, 0.2) !important;
+  border-radius: 12px !important;
+  padding: 30px !important;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.option-card:hover {
+  border-color: rgba(255, 215, 0, 0.5) !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(255, 215, 0, 0.2);
+}
+
+.option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  text-align: center;
+}
+
+.option-content h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  color: #ffd700;
+}
+
+.option-content p {
+  font-size: 14px;
+  color: #aaa;
+  margin: 0;
+}
+
+.start-button {
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%) !important;
+  color: #000 !important;
+  font-weight: 600 !important;
+  padding: 12px 24px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.start-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(255, 215, 0, 0.3) !important;
+}
+
+.start-button:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+.rules-button,
+.history-button {
+  background: transparent !important;
+  color: #fff !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  font-weight: 600 !important;
+  padding: 10px 20px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.rules-button:hover,
+.history-button:hover {
+  border-color: #fff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.features-section {
+  margin-top: 30px;
+}
+
+.features-section h2 {
+  font-size: 32px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 40px;
+  color: #ffd700;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+}
+
+.feature-item {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 12px;
+  padding: 30px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.feature-item:hover {
+  border-color: rgba(255, 215, 0, 0.5);
+  background: rgba(0, 0, 0, 0.3);
+  transform: translateY(-5px);
+}
+
+.feature-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+}
+
+.feature-item h4 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 15px 0;
+  color: #ffd700;
+}
+
+.feature-item p {
+  font-size: 14px;
+  color: #aaa;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .game-lobby {
+    padding: 20px 10px;
+  }
+
+  .lobby-container {
+    gap: 30px;
+  }
+
+  .game-title {
+    font-size: 48px;
+  }
+
+  .game-options {
+    grid-template-columns: 1fr;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+}
