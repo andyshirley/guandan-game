@@ -132,3 +132,6 @@
 
 ## 项目文档
 - [x] 新增中文 README.md，涵盖项目介绍、功能特性、技术架构、AI 说明、本地开发指南
+
+## Bug 修复
+- [x] 修复单击手牌无法直接出牌的问题：将 selectedCardsRef/isMyTurnRef/isAIThinkingRef/playCardsRef 提前声明，setTimeout 回调改用 playCardsRef.current 避免陈旧闭包

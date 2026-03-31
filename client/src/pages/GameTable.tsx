@@ -110,6 +110,12 @@ export default function GameTable({
   const historyEndRef = useRef<HTMLDivElement>(null);
   const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const danzeroHistoryRef = useRef<DanzeroGameHistory>(createDanzeroHistory());
+  // 下面几个 ref 需要在 handleCardClick 和键盘快捷键中共用，必须在两者之前声明
+  const selectedCardsRef = useRef<Card[]>([]);
+  const isMyTurnRef = useRef(false);
+  const isAIThinkingRef = useRef(false);
+  // playCardsRef 在 playCards 定义后立即更新
+  const playCardsRef = useRef<(cards: Card[]) => boolean>(() => false);
 
   const currentPlayer = gameState.currentRound.currentPlayer;
   const isMyTurn = currentPlayer === PlayerPosition.Player0;
@@ -117,6 +123,9 @@ export default function GameTable({
 
   // 始终同步最新 gameState 到 ref，供异步回调使用
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+  useEffect(() => { selectedCardsRef.current = selectedCards; }, [selectedCards]);
+  useEffect(() => { isMyTurnRef.current = isMyTurn; }, [isMyTurn]);
+  useEffect(() => { isAIThinkingRef.current = isAIThinking; }, [isAIThinking]);
 
   const lastPlay = gameState.currentRound.lastPlay;
 
@@ -176,6 +185,8 @@ export default function GameTable({
       return false;
     }
   }, [addPlayRecord]);
+  // 始终同步最新 playCards 到 ref
+  useEffect(() => { playCardsRef.current = playCards; }, [playCards]);
 
   const runAITurn = useCallback((state: GameStateData) => {
     const pos = state.currentRound.currentPlayer;
@@ -303,14 +314,11 @@ export default function GameTable({
           if (singleClickTimerRef.current) clearTimeout(singleClickTimerRef.current);
           singleClickTimerRef.current = setTimeout(() => {
             singleClickTimerRef.current = null;
-            // 只有当前选牌仍是这一张时才出牌（双击会改变选牌）
-            setSelectedCards(prev => {
-              if (prev.length === 1 && prev[0].rank === card.rank && prev[0].suit === card.suit) {
-                playCards(prev);
-                return [];
-              }
-              return prev;
-            });
+            // 通过 ref 读取最新选牌状态，避免陈旧闭包
+            const current = selectedCardsRef.current;
+            if (current.length === 1 && current[0].rank === card.rank && current[0].suit === card.suit) {
+              playCardsRef.current(current);
+            }
           }, 320);
         }
       }
@@ -417,12 +425,7 @@ export default function GameTable({
   })();
 
   // ===== 键盘快捷键：使用 ref 避免频繁重绑 =====
-  const selectedCardsRef = useRef(selectedCards);
-  useEffect(() => { selectedCardsRef.current = selectedCards; }, [selectedCards]);
-  const isMyTurnRef = useRef(isMyTurn);
-  useEffect(() => { isMyTurnRef.current = isMyTurn; }, [isMyTurn]);
-  const isAIThinkingRef = useRef(isAIThinking);
-  useEffect(() => { isAIThinkingRef.current = isAIThinking; }, [isAIThinking]);
+  // selectedCardsRef / isMyTurnRef / isAIThinkingRef / playCardsRef 已在组件顶部声明并同步
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
