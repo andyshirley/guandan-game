@@ -6,7 +6,7 @@
   background: radial-gradient(ellipse at center, #1a5c30 0%, #0d3a1e 60%, #061a0d 100%);
   color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  overflow: hidden;
+  /* 不设置 overflow，让手牌选中上移时不被裁剪 */
 }
 
 /* ===== 顶部信息栏 ===== */
@@ -73,9 +73,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
-  gap: 8px;
+  padding: 8px 16px;
+  gap: 4px;
   position: relative;
+  overflow: visible;
 }
 
 /* ===== AI 玩家显示 ===== */
@@ -309,8 +310,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
+  /* 顶部预留给选中牌上移的空间 */
+  padding-top: 20px;
 }
 
 /* ===== 错误提示 ===== */
@@ -359,49 +362,50 @@
 /* ===== 手牌区 ===== */
 .gt-hand-area {
   width: 100%;
-  overflow-x: auto;
-  padding: 8px 0;
+  padding: 12px 0 4px 0;
 }
 
 .gt-hand-cards {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 0 16px;
-  min-height: 100px;
+  gap: 3px;
+  padding: 0 12px;
+  min-height: 80px;
 }
 
 /* ===== 手牌卡片 ===== */
 .gt-card {
-  width: 54px;
-  height: 78px;
+  width: 48px;
+  height: 68px;
   background: #fff;
-  border-radius: 7px;
+  border-radius: 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 5px 4px;
+  padding: 4px 3px;
   cursor: pointer;
   transition: all 0.18s ease;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   position: relative;
   user-select: none;
   flex-shrink: 0;
 }
 
 .gt-card:hover:not(.disabled) {
-  transform: translateY(-10px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
   z-index: 10;
+  transform: translateY(-4px);
 }
 
 .gt-card.selected {
-  transform: translateY(-14px);
-  box-shadow: 0 0 0 2px #ffd700, 0 10px 24px rgba(255, 215, 0, 0.4);
+  /* 用金色边框+背景色表示选中，小幅上移 */
+  box-shadow: 0 0 0 2.5px #ffd700, 0 4px 16px rgba(255, 215, 0, 0.5);
   z-index: 20;
   background: #fffde7;
+  border-bottom: 3px solid #ffd700;
+  transform: translateY(-6px);
 }
 
 .gt-card.disabled {
