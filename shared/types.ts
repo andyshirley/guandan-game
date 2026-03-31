@@ -48,9 +48,11 @@ export enum CardType {
   Single = "single",           // 单牌
   Pair = "pair",               // 对子
   Triple = "triple",           // 三张
-  Sequence = "sequence",       // 顺子（至少5张）
-  PairSequence = "pair_seq",   // 对顺（至少3对）
-  TripleSequence = "triple_seq", // 三顺（至少2个三张）
+  FullHouse = "full_house",    // 三带二（3张同点+1对）
+  Sequence = "sequence",       // 顺子（五张连续单牌）
+  PairSequence = "pair_seq",   // 对顺（三对连续对）
+  TripleSequence = "triple_seq", // 三顺（两个连续三张）
+  StraightFlush = "straight_flush", // 同花顺（同花色五张连续）
   Bomb = "bomb",               // 炸弹（4张或以上）
   RoyalBomb = "royal_bomb",    // 王炸（大小王）
 }

@@ -59,74 +59,83 @@ export function isBomb(cards: Card[]): boolean {
 }
 
 /**
- * 判断是否为三顺（连续的三张）
+ * 判断是否为三顺（鈢板）：严格2个连续三张=6张
  */
 export function isTripleSequence(cards: Card[], currentRank: Rank): boolean {
-  if (cards.length < 6) return false; // 至少2个三张
-  if (cards.length % 3 !== 0) return false;
+  if (cards.length !== 6) return false; // 严格2个三张
 
-  // 检查是否都是三张
   const groups = groupCardsByRank(cards);
   if (Object.values(groups).some((g) => g.length !== 3)) return false;
 
-  // 检查是否连续
   const ranks = Object.keys(groups).map((r) => r as Rank).sort(
-    (a, b) => getRankValue(a, currentRank) - getRankValue(b, currentRank)
+    (a, b) => RANK_ORDER.indexOf(a) - RANK_ORDER.indexOf(b)
   );
-  
-  // 检查是否是不中断的顺序
-  for (let i = 1; i < ranks.length; i++) {
-    const prevIndex = RANK_ORDER.indexOf(ranks[i - 1]);
-    const currIndex = RANK_ORDER.indexOf(ranks[i]);
-    if (currIndex !== prevIndex + 1) return false;
-  }
-  return true;
+  if (ranks.length !== 2) return false;
+  return RANK_ORDER.indexOf(ranks[1]) === RANK_ORDER.indexOf(ranks[0]) + 1;
 }
 
 /**
- * 判断是否为对顺（连续的对子）
+ * 判断是否为对顺：严格3对连续对=6张，两连对不可出
  */
 export function isPairSequence(cards: Card[], currentRank: Rank): boolean {
-  if (cards.length < 6) return false; // 至少3对
-  if (cards.length % 2 !== 0) return false;
+  if (cards.length !== 6) return false; // 严格3对
 
-  // 检查是否都是对子
   const groups = groupCardsByRank(cards);
   if (Object.values(groups).some((g) => g.length !== 2)) return false;
 
-  // 检查是否连续
   const ranks = Object.keys(groups).map((r) => r as Rank).sort(
-    (a, b) => getRankValue(a, currentRank) - getRankValue(b, currentRank)
+    (a, b) => RANK_ORDER.indexOf(a) - RANK_ORDER.indexOf(b)
   );
-  
-  // 检查是否是不中断的顺序
+  if (ranks.length !== 3) return false;
   for (let i = 1; i < ranks.length; i++) {
-    const prevIndex = RANK_ORDER.indexOf(ranks[i - 1]);
-    const currIndex = RANK_ORDER.indexOf(ranks[i]);
-    if (currIndex !== prevIndex + 1) return false;
+    if (RANK_ORDER.indexOf(ranks[i]) !== RANK_ORDER.indexOf(ranks[i - 1]) + 1) return false;
   }
   return true;
 }
 
 /**
- * 判断是否为顺子（连续的单牌）
+ * 判断是否为顺子：严格5张，连续单牌，不含王牌
+ * 支持绕圈顺：A-2-3-4-5 和 10-J-Q-K-A
  */
 export function isSequence(ranks: Rank[], currentRank: Rank): boolean {
-  if (ranks.length < 5) return false;
+  if (ranks.length !== 5) return false;
+  // 不能包含王牌
+  if (ranks.includes(Rank.SmallJoker) || ranks.includes(Rank.BigJoker)) return false;
+  // 每张点数必须不同
+  const uniqueRanks = new Set(ranks);
+  if (uniqueRanks.size !== 5) return false;
 
-  // 排序
   const sorted = [...ranks].sort(
-    (a, b) => getRankValue(a, currentRank) - getRankValue(b, currentRank)
+    (a, b) => RANK_ORDER.indexOf(a) - RANK_ORDER.indexOf(b)
   );
+  const indices = sorted.map(r => RANK_ORDER.indexOf(r));
 
-  // 检查是否连续
-  for (let i = 1; i < sorted.length; i++) {
-    const prevIndex = RANK_ORDER.indexOf(sorted[i - 1]);
-    const currIndex = RANK_ORDER.indexOf(sorted[i]);
-    if (currIndex !== prevIndex + 1) return false;
+  // 普通连续检查
+  let isNormal = true;
+  for (let i = 1; i < indices.length; i++) {
+    if (indices[i] !== indices[i - 1] + 1) { isNormal = false; break; }
   }
+  if (isNormal) return true;
 
-  return true;
+  // 绕圈顺 A-2-3-4-5：索引 [0,1,2,11,12]
+  const specialALow =
+    indices[0] === RANK_ORDER.indexOf(Rank.Three) &&
+    indices[1] === RANK_ORDER.indexOf(Rank.Four) &&
+    indices[2] === RANK_ORDER.indexOf(Rank.Five) &&
+    indices[3] === RANK_ORDER.indexOf(Rank.Ace) &&
+    indices[4] === RANK_ORDER.indexOf(Rank.Two);
+  if (specialALow) return true;
+
+  // 绕圈顺 10-J-Q-K-A
+  const specialAHigh =
+    indices[0] === RANK_ORDER.indexOf(Rank.Ten) &&
+    indices[1] === RANK_ORDER.indexOf(Rank.Jack) &&
+    indices[2] === RANK_ORDER.indexOf(Rank.Queen) &&
+    indices[3] === RANK_ORDER.indexOf(Rank.King) &&
+    indices[4] === RANK_ORDER.indexOf(Rank.Ace);
+  if (specialAHigh) return true;
+
+  return false;
 }
 
 /**
@@ -155,18 +164,27 @@ export function identifyCardType(cards: Card[], currentRank: Rank): CardType | n
   // 炸弹
   if (isBomb(cards)) return CardType.Bomb;
 
-  // 三顺
+  // 同花顺（优先于普通顺子）
+  if (isStraightFlush(cards, currentRank)) return CardType.StraightFlush;
+
+  // 三顺（严格2个三张=6张）
   if (isTripleSequence(cards, currentRank)) return CardType.TripleSequence;
 
-  // 对顺
+  // 对顺（严格3对=6张）
   if (isPairSequence(cards, currentRank)) return CardType.PairSequence;
 
-  // 顺子
+  // 顺子（严格5张）
   const ranks = cards.map((c) => c.rank);
-  if (isSequence(ranks, currentRank)) return CardType.Sequence;
+  if (cards.length === 5 && isSequence(ranks, currentRank)) return CardType.Sequence;
+
+  // 三带二
+  if (isFullHouse(cards)) return CardType.FullHouse;
 
   // 三张
   const groups = groupCardsByRank(cards);
+  // 大小王不能单独出牌
+  const hasJoker = cards.some(c => c.rank === Rank.SmallJoker || c.rank === Rank.BigJoker);
+  if (hasJoker) return null;
   if (cards.length === 3 && Object.keys(groups).length === 1) {
     return CardType.Triple;
   }
@@ -183,6 +201,28 @@ export function identifyCardType(cards: Card[], currentRank: Rank): CardType | n
 }
 
 /**
+ * 判断是否为同花顺：同花色的5张连续牌
+ */
+export function isStraightFlush(cards: Card[], currentRank: Rank): boolean {
+  if (cards.length !== 5) return false;
+  const suit = cards[0].suit;
+  if (!cards.every(c => c.suit === suit)) return false;
+  if (cards.some(c => c.rank === Rank.SmallJoker || c.rank === Rank.BigJoker)) return false;
+  const ranks = cards.map(c => c.rank);
+  return isSequence(ranks, currentRank);
+}
+
+/**
+ * 判断是否为三带二：3张同点数 + 1对（共5张）
+ */
+export function isFullHouse(cards: Card[]): boolean {
+  if (cards.length !== 5) return false;
+  const groups = groupCardsByRank(cards);
+  const counts = Object.values(groups).map(g => g.length).sort();
+  return counts.length === 2 && counts[0] === 2 && counts[1] === 3;
+}
+
+/**
  * 计算出牌的数值（用于比较大小）
  */
 export function calculateCardPlayValue(play: CardPlay, currentRank: Rank): number {
@@ -193,9 +233,11 @@ export function calculateCardPlayValue(play: CardPlay, currentRank: Rank): numbe
     [CardType.Single]: 1,
     [CardType.Pair]: 100,
     [CardType.Triple]: 10000,
+    [CardType.FullHouse]: 50000,
     [CardType.Sequence]: 1000000,
     [CardType.PairSequence]: 100000000,
     [CardType.TripleSequence]: 10000000000,
+    [CardType.StraightFlush]: 500000000000,  // 同花顺 > 五张炸弹
     [CardType.Bomb]: 1000000000000,
     [CardType.RoyalBomb]: 10000000000000,
   };
@@ -205,31 +247,44 @@ export function calculateCardPlayValue(play: CardPlay, currentRank: Rank): numbe
 
 /**
  * 判断是否可以出牌（相对于上一张牌）
+ * 规则：四王 > 6张+炸弹 > 同花顺 > 5张炸弹 > 4张炸弹 > 普通牌型
  */
 export function canPlayCards(
   play: CardPlay,
   lastPlay: CardPlay | null,
   currentRank: Rank
 ): boolean {
-  // 第一张牌，任何牌型都可以
   if (!lastPlay) return true;
 
   // 王炸可以压任何牌
   if (play.type === CardType.RoyalBomb) return true;
 
-  // 炸弹可以压非炸弹的牌
-  if (play.type === CardType.Bomb && lastPlay.type !== CardType.Bomb && lastPlay.type !== CardType.RoyalBomb) {
-    return true;
+  if (play.type === CardType.Bomb) {
+    if (lastPlay.type === CardType.RoyalBomb) return false;
+    if (lastPlay.type === CardType.Bomb) {
+      return calculateCardPlayValue(play, currentRank) > calculateCardPlayValue(lastPlay, currentRank);
+    }
+    if (lastPlay.type === CardType.StraightFlush) {
+      // 同花顺 > 5张炸弹，只有6张及以上炸弹才能压同花顺
+      return play.cards.length >= 6;
+    }
+    return true; // 炸弹可压普通牌型
   }
 
-  // 同牌型比较大小
-  if (play.type === lastPlay.type) {
-    const playValue = calculateCardPlayValue(play, currentRank);
-    const lastValue = calculateCardPlayValue(lastPlay, currentRank);
-    return playValue > lastValue;
+  if (play.type === CardType.StraightFlush) {
+    if (lastPlay.type === CardType.RoyalBomb) return false;
+    if (lastPlay.type === CardType.Bomb) return false;
+    if (lastPlay.type === CardType.StraightFlush) {
+      return calculateCardPlayValue(play, currentRank) > calculateCardPlayValue(lastPlay, currentRank);
+    }
+    // 同花顺不能压普通顺子（同花顺是炸弹级别）
+    return false;
   }
 
-  return false;
+  // 普通牌型：必须同类型同张数
+  if (play.type !== lastPlay.type) return false;
+  if (play.cards.length !== lastPlay.cards.length) return false;
+  return calculateCardPlayValue(play, currentRank) > calculateCardPlayValue(lastPlay, currentRank);
 }
 
 /**

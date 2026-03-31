@@ -1,6 +1,6 @@
 /**
  * 前端掼蛋游戏引擎
- * 将核心游戏逻辑运行在浏览器端，实现流畅的本地游戏体验
+ * 对照官方规则全面修复：三带二、同花顺、顺子限5张、连对限3对、三顺限2个
  */
 
 import {
@@ -35,9 +35,7 @@ export function getRankValue(rank: Rank, currentRank: Rank): number {
 export function isRoyalBomb(cards: Card[]): boolean {
   if (cards.length !== 2) return false;
   const ranks = cards.map((c) => c.rank);
-  return (
-    (ranks.includes(Rank.SmallJoker) && ranks.includes(Rank.BigJoker))
-  );
+  return ranks.includes(Rank.SmallJoker) && ranks.includes(Rank.BigJoker);
 }
 
 export function isBomb(cards: Card[]): boolean {
@@ -55,29 +53,90 @@ export function groupCardsByRank(cards: Card[]): Record<string, Card[]> {
   return groups;
 }
 
+/**
+ * 判断是否为顺子：严格5张，连续单牌，不含王牌
+ * 支持绕圈顺：A-2-3-4-5 和 10-J-Q-K-A
+ */
 export function isSequence(cards: Card[], currentRank: Rank): boolean {
-  if (cards.length < 5) return false;
+  if (cards.length !== 5) return false;
   const ranks = cards.map((c) => c.rank);
   // 不能包含王牌
   if (ranks.includes(Rank.SmallJoker) || ranks.includes(Rank.BigJoker)) return false;
+  // 每张点数必须不同（顺子不能有重复）
+  const groups = groupCardsByRank(cards);
+  if (Object.keys(groups).length !== 5) return false;
+
   const sorted = [...ranks].sort(
-    (a, b) => getRankValue(a, currentRank) - getRankValue(b, currentRank)
+    (a, b) => RANK_ORDER.indexOf(a) - RANK_ORDER.indexOf(b)
   );
-  for (let i = 1; i < sorted.length; i++) {
-    const prev = RANK_ORDER.indexOf(sorted[i - 1]);
-    const curr = RANK_ORDER.indexOf(sorted[i]);
-    if (curr !== prev + 1) return false;
+
+  // 检查是否为 A-2-3-4-5（绕圈顺，A 作为最小）
+  const isALow =
+    sorted[0] === Rank.Three &&
+    sorted[1] === Rank.Four &&
+    sorted[2] === Rank.Five &&
+    sorted[3] === Rank.Two &&
+    sorted[4] === Rank.Ace;
+  // 实际上 A-2-3-4-5 在 RANK_ORDER 中 A=11, 2=12，需要特殊处理
+  // 按照规则：A-2-3-4-5 是最小顺子
+  const rankIndices = sorted.map(r => RANK_ORDER.indexOf(r));
+  // 普通连续检查
+  let isNormalSeq = true;
+  for (let i = 1; i < rankIndices.length; i++) {
+    if (rankIndices[i] !== rankIndices[i - 1] + 1) {
+      isNormalSeq = false;
+      break;
+    }
   }
-  return true;
+  if (isNormalSeq) return true;
+
+  // 特殊检查 A-2-3-4-5：索引为 [0,1,2,11,12] → 排序后 [0,1,2,11,12]
+  const specialALow = rankIndices.length === 5 &&
+    rankIndices[0] === RANK_ORDER.indexOf(Rank.Three) &&
+    rankIndices[1] === RANK_ORDER.indexOf(Rank.Four) &&
+    rankIndices[2] === RANK_ORDER.indexOf(Rank.Five) &&
+    rankIndices[3] === RANK_ORDER.indexOf(Rank.Ace) &&
+    rankIndices[4] === RANK_ORDER.indexOf(Rank.Two);
+  if (specialALow) return true;
+
+  // 特殊检查 10-J-Q-K-A
+  const specialAHigh = rankIndices.length === 5 &&
+    rankIndices[0] === RANK_ORDER.indexOf(Rank.Ten) &&
+    rankIndices[1] === RANK_ORDER.indexOf(Rank.Jack) &&
+    rankIndices[2] === RANK_ORDER.indexOf(Rank.Queen) &&
+    rankIndices[3] === RANK_ORDER.indexOf(Rank.King) &&
+    rankIndices[4] === RANK_ORDER.indexOf(Rank.Ace);
+  if (specialAHigh) return true;
+
+  return false;
 }
 
+/**
+ * 判断是否为同花顺：同花色的5张连续牌
+ */
+export function isStraightFlush(cards: Card[], currentRank: Rank): boolean {
+  if (cards.length !== 5) return false;
+  // 必须同花色
+  const suit = cards[0].suit;
+  if (!cards.every(c => c.suit === suit)) return false;
+  // 不含王牌
+  if (cards.some(c => c.rank === Rank.SmallJoker || c.rank === Rank.BigJoker)) return false;
+  // 必须是顺子
+  return isSequence(cards, currentRank);
+}
+
+/**
+ * 判断是否为连对（对顺）：严格3对，连续点数
+ * 规则：三对连续对牌，不可超过3对，两连对不可出
+ */
 export function isPairSequence(cards: Card[], currentRank: Rank): boolean {
-  if (cards.length < 6 || cards.length % 2 !== 0) return false;
+  if (cards.length !== 6) return false; // 严格3对=6张
   const groups = groupCardsByRank(cards);
   if (Object.values(groups).some((g) => g.length !== 2)) return false;
   const ranks = Object.keys(groups).sort(
-    (a, b) => getRankValue(a as Rank, currentRank) - getRankValue(b as Rank, currentRank)
+    (a, b) => RANK_ORDER.indexOf(a as Rank) - RANK_ORDER.indexOf(b as Rank)
   );
+  if (ranks.length !== 3) return false;
   for (let i = 1; i < ranks.length; i++) {
     const prev = RANK_ORDER.indexOf(ranks[i - 1] as Rank);
     const curr = RANK_ORDER.indexOf(ranks[i] as Rank);
@@ -86,28 +145,44 @@ export function isPairSequence(cards: Card[], currentRank: Rank): boolean {
   return true;
 }
 
+/**
+ * 判断是否为三顺（钢板）：严格2个连续三张
+ * 规则：二个连续三张牌，不可超过2个
+ */
 export function isTripleSequence(cards: Card[], currentRank: Rank): boolean {
-  if (cards.length < 6 || cards.length % 3 !== 0) return false;
+  if (cards.length !== 6) return false; // 严格2个三张=6张
   const groups = groupCardsByRank(cards);
   if (Object.values(groups).some((g) => g.length !== 3)) return false;
   const ranks = Object.keys(groups).sort(
-    (a, b) => getRankValue(a as Rank, currentRank) - getRankValue(b as Rank, currentRank)
+    (a, b) => RANK_ORDER.indexOf(a as Rank) - RANK_ORDER.indexOf(b as Rank)
   );
-  for (let i = 1; i < ranks.length; i++) {
-    const prev = RANK_ORDER.indexOf(ranks[i - 1] as Rank);
-    const curr = RANK_ORDER.indexOf(ranks[i] as Rank);
-    if (curr !== prev + 1) return false;
-  }
-  return true;
+  if (ranks.length !== 2) return false;
+  const prev = RANK_ORDER.indexOf(ranks[0] as Rank);
+  const curr = RANK_ORDER.indexOf(ranks[1] as Rank);
+  return curr === prev + 1;
+}
+
+/**
+ * 判断是否为三带二：3张同点数 + 1对（共5张）
+ */
+export function isFullHouse(cards: Card[]): boolean {
+  if (cards.length !== 5) return false;
+  const groups = groupCardsByRank(cards);
+  const counts = Object.values(groups).map(g => g.length).sort();
+  // 必须是 [2, 3]
+  return counts.length === 2 && counts[0] === 2 && counts[1] === 3;
 }
 
 export function identifyCardType(cards: Card[], currentRank: Rank): CardType | null {
   if (cards.length === 0) return null;
   if (isRoyalBomb(cards)) return CardType.RoyalBomb;
   if (isBomb(cards)) return CardType.Bomb;
+  // 同花顺优先于普通顺子判断
+  if (isStraightFlush(cards, currentRank)) return CardType.StraightFlush;
   if (isTripleSequence(cards, currentRank)) return CardType.TripleSequence;
   if (isPairSequence(cards, currentRank)) return CardType.PairSequence;
   if (isSequence(cards, currentRank)) return CardType.Sequence;
+  if (isFullHouse(cards)) return CardType.FullHouse;
   const groups = groupCardsByRank(cards);
   const groupCount = Object.keys(groups).length;
   // 大小王不能单独出牌（单张、对子、三张），只能一起出王炸
@@ -119,25 +194,58 @@ export function identifyCardType(cards: Card[], currentRank: Rank): CardType | n
   return null;
 }
 
+/**
+ * 计算出牌的数值（用于比较大小）
+ * 规则：四王 > 6张+炸弹 > 同花顺 > 5张炸弹 > 4张炸弹 > 普通牌型
+ * 三带二比较三张部分的点数
+ */
 export function calculatePlayValue(cards: Card[], type: CardType, currentRank: Rank): number {
+  // 三带二：取三张部分的点数作为基准值
+  if (type === CardType.FullHouse) {
+    const groups = groupCardsByRank(cards);
+    const tripleRank = Object.entries(groups).find(([, g]) => g.length === 3)?.[0] as Rank;
+    const baseValue = getRankValue(tripleRank, currentRank);
+    return baseValue * 50000;
+  }
+
   const baseValue = getRankValue(cards[0].rank, currentRank);
+
+  // 炸弹：张数越多越大（5张 > 4张），同张数再比点数
+  if (type === CardType.Bomb) {
+    return cards.length * 1000000000000 + baseValue;
+  }
+
+  // 同花顺：介于5张炸弹和6张炸弹之间
+  // 6张炸弹值 = 6 * 1e12 + base ≈ 6e12
+  // 5张炸弹值 = 5 * 1e12 + base ≈ 5e12
+  // 同花顺值 = 5.5e12 + base（大于5张炸弹，小于6张炸弹）
+  if (type === CardType.StraightFlush) {
+    return 5500000000000 + baseValue;
+  }
+
   const multipliers: Record<CardType, number> = {
     [CardType.Single]: 1,
     [CardType.Pair]: 100,
     [CardType.Triple]: 10000,
+    [CardType.FullHouse]: 50000,
     [CardType.Sequence]: 1000000,
     [CardType.PairSequence]: 100000000,
     [CardType.TripleSequence]: 10000000000,
+    [CardType.StraightFlush]: 5500000000000,
     [CardType.Bomb]: 1000000000000,
-    [CardType.RoyalBomb]: 10000000000000,
+    [CardType.RoyalBomb]: 100000000000000,
   };
-  // 炸弹：张数越多越大（5 张 > 4 张），同张数再比点数
-  if (type === CardType.Bomb) {
-    return cards.length * multipliers[CardType.Bomb] + baseValue;
-  }
   return baseValue * multipliers[type];
 }
 
+/**
+ * 判断是否可以出牌（相对于上一手牌）
+ * 规则：
+ * - 王炸最大，可压任何牌
+ * - 炸弹可压非炸弹牌型；炸弹之间比张数再比点数
+ * - 同花顺只能被炸弹/王炸压过，不能被普通顺子压
+ * - 其他牌型：必须同类型同张数，比点数大小
+ */
 export function canPlayCards(
   play: CardPlay,
   lastPlay: CardPlay | null,
@@ -145,11 +253,27 @@ export function canPlayCards(
 ): boolean {
   if (!lastPlay) return true;
   if (play.type === CardType.RoyalBomb) return true;
+
   if (play.type === CardType.Bomb) {
-    if (lastPlay.type !== CardType.Bomb && lastPlay.type !== CardType.RoyalBomb) return true;
+    // 炸弹可压非炸弹、非同花顺（同花顺 > 普通炸弹，但 < 6张炸弹）
+    if (lastPlay.type === CardType.RoyalBomb) return false;
     if (lastPlay.type === CardType.Bomb) return play.value > lastPlay.value;
+    if (lastPlay.type === CardType.StraightFlush) {
+      // 同花顺 > 5张炸弹，只有6张及以上炸弹才能压同花顺
+      return play.cards.length >= 6;
+    }
+    return true; // 炸弹可压普通牌型
+  }
+
+  if (play.type === CardType.StraightFlush) {
+    if (lastPlay.type === CardType.RoyalBomb) return false;
+    if (lastPlay.type === CardType.Bomb) return false; // 炸弹大于同花顺（除非是5张以下，但炸弹最少4张）
+    if (lastPlay.type === CardType.StraightFlush) return play.value > lastPlay.value;
+    // 同花顺不能压普通顺子（同花顺是特殊炸弹级别）
     return false;
   }
+
+  // 普通牌型：必须同类型同张数
   if (play.type !== lastPlay.type) return false;
   if (play.cards.length !== lastPlay.cards.length) return false;
   return play.value > lastPlay.value;
@@ -369,10 +493,6 @@ export function findPlayableCombinations(
   currentRank: Rank
 ): Card[][] {
   const results: Card[][] = [];
-  const n = hand.length;
-
-  // 根据上家牌型，只搜索相同长度（或炸弹）
-  const targetLen = lastPlay.cards.length;
   const targetType = lastPlay.type;
 
   // 王炸
@@ -385,7 +505,6 @@ export function findPlayableCombinations(
   const groups = groupCardsByRank(hand);
   for (const [, cards] of Object.entries(groups)) {
     if (cards.length >= 4) {
-      // 从 4 张到全部，每种张数都推荐
       for (let bombSize = 4; bombSize <= cards.length; bombSize++) {
         const bomb = cards.slice(0, bombSize);
         const play: CardPlay = {
@@ -395,6 +514,34 @@ export function findPlayableCombinations(
         };
         if (canPlayCards(play, lastPlay, currentRank)) {
           results.push(bomb);
+        }
+      }
+    }
+  }
+
+  // 同花顺搜索
+  if (targetType === CardType.StraightFlush || targetType === CardType.Sequence) {
+    // 按花色分组，在每种花色中找5张连续牌
+    const bySuit: Record<string, Card[]> = {};
+    for (const card of hand) {
+      if (!bySuit[card.suit]) bySuit[card.suit] = [];
+      bySuit[card.suit].push(card);
+    }
+    for (const suitCards of Object.values(bySuit)) {
+      const sorted = sortCards(suitCards, currentRank).filter(
+        c => c.rank !== Rank.SmallJoker && c.rank !== Rank.BigJoker
+      );
+      for (let start = 0; start <= sorted.length - 5; start++) {
+        const combo = sorted.slice(start, start + 5);
+        if (isStraightFlush(combo, currentRank)) {
+          const play: CardPlay = {
+            type: CardType.StraightFlush,
+            cards: combo,
+            value: calculatePlayValue(combo, CardType.StraightFlush, currentRank),
+          };
+          if (canPlayCards(play, lastPlay, currentRank)) {
+            results.push(combo);
+          }
         }
       }
     }
@@ -440,18 +587,96 @@ export function findPlayableCombinations(
         }
       }
     }
+  } else if (targetType === CardType.FullHouse) {
+    // 三带二搜索：找所有三张组合，再配一对
+    for (const [tripleRank, tripleCards] of Object.entries(groups)) {
+      if (tripleCards.length >= 3) {
+        const triple = tripleCards.slice(0, 3);
+        // 找配对（不同点数）
+        for (const [pairRank, pairCards] of Object.entries(groups)) {
+          if (pairRank !== tripleRank && pairCards.length >= 2) {
+            const combo = [...triple, ...pairCards.slice(0, 2)];
+            const play: CardPlay = {
+              type: CardType.FullHouse,
+              cards: combo,
+              value: calculatePlayValue(combo, CardType.FullHouse, currentRank),
+            };
+            if (canPlayCards(play, lastPlay, currentRank)) {
+              results.push(combo);
+            }
+          }
+        }
+      }
+    }
   } else if (targetType === CardType.Sequence) {
-    // 顺子搜索
+    // 顺子搜索（严格5张）
     const sorted = sortCards(hand, currentRank).filter(
       c => c.rank !== Rank.SmallJoker && c.rank !== Rank.BigJoker
     );
-    for (let start = 0; start <= sorted.length - targetLen; start++) {
-      const combo = sorted.slice(start, start + targetLen);
+    // 去重（同点数只取一张）
+    const uniqueSorted: Card[] = [];
+    const seen = new Set<string>();
+    for (const card of sorted) {
+      if (!seen.has(card.rank)) {
+        seen.add(card.rank);
+        uniqueSorted.push(card);
+      }
+    }
+    for (let start = 0; start <= uniqueSorted.length - 5; start++) {
+      const combo = uniqueSorted.slice(start, start + 5);
       if (isSequence(combo, currentRank)) {
         const play: CardPlay = {
           type: CardType.Sequence,
           cards: combo,
           value: calculatePlayValue(combo, CardType.Sequence, currentRank),
+        };
+        if (canPlayCards(play, lastPlay, currentRank)) {
+          results.push(combo);
+        }
+      }
+    }
+  } else if (targetType === CardType.PairSequence) {
+    // 连对搜索（严格3对=6张）
+    const pairRanks = Object.entries(groups)
+      .filter(([, g]) => g.length >= 2)
+      .map(([r]) => r as Rank)
+      .sort((a, b) => RANK_ORDER.indexOf(a) - RANK_ORDER.indexOf(b));
+    for (let start = 0; start <= pairRanks.length - 3; start++) {
+      const threeRanks = pairRanks.slice(start, start + 3);
+      // 检查是否连续
+      let consecutive = true;
+      for (let i = 1; i < threeRanks.length; i++) {
+        if (RANK_ORDER.indexOf(threeRanks[i]) !== RANK_ORDER.indexOf(threeRanks[i-1]) + 1) {
+          consecutive = false;
+          break;
+        }
+      }
+      if (consecutive) {
+        const combo = threeRanks.flatMap(r => groups[r].slice(0, 2));
+        const play: CardPlay = {
+          type: CardType.PairSequence,
+          cards: combo,
+          value: calculatePlayValue(combo, CardType.PairSequence, currentRank),
+        };
+        if (canPlayCards(play, lastPlay, currentRank)) {
+          results.push(combo);
+        }
+      }
+    }
+  } else if (targetType === CardType.TripleSequence) {
+    // 三顺搜索（严格2个三张=6张）
+    const tripleRanks = Object.entries(groups)
+      .filter(([, g]) => g.length >= 3)
+      .map(([r]) => r as Rank)
+      .sort((a, b) => RANK_ORDER.indexOf(a) - RANK_ORDER.indexOf(b));
+    for (let start = 0; start <= tripleRanks.length - 2; start++) {
+      const twoRanks = tripleRanks.slice(start, start + 2);
+      if (RANK_ORDER.indexOf(twoRanks[1]) === RANK_ORDER.indexOf(twoRanks[0]) + 1) {
+        const combo = twoRanks.flatMap(r => groups[r].slice(0, 3));
+        const play: CardPlay = {
+          type: CardType.TripleSequence,
+          cards: combo,
+          value: calculatePlayValue(combo, CardType.TripleSequence, currentRank),
         };
         if (canPlayCards(play, lastPlay, currentRank)) {
           results.push(combo);
@@ -503,9 +728,11 @@ export function getCardTypeLabel(type: CardType): string {
     [CardType.Single]: "单牌",
     [CardType.Pair]: "对子",
     [CardType.Triple]: "三张",
+    [CardType.FullHouse]: "三带二",
     [CardType.Sequence]: "顺子",
-    [CardType.PairSequence]: "对顺",
+    [CardType.PairSequence]: "连对",
     [CardType.TripleSequence]: "三顺",
+    [CardType.StraightFlush]: "同花顺",
     [CardType.Bomb]: "炸弹",
     [CardType.RoyalBomb]: "王炸",
   };
