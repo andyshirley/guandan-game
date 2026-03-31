@@ -102,117 +102,71 @@ export const gameRouter = router({
     }),
 
   /**
-   * 出牌
+   * 出牌（仅用于数据库记录，游戏逻辑在前端本地执行）
+   * 注意：游戏实时状态由前端 client/src/lib/gameEngine.ts 管理
    */
-  playCards: protectedProcedure
+  recordPlay: protectedProcedure
     .input(z.object({
-      gameId: z.string(),
-      cards: z.array(z.object({
-        rank: z.string(),
-        suit: z.string(),
-      })),
+      gameId: z.number(),
+      roundNumber: z.number(),
+      playerPosition: z.number(),
+      cardsPlayed: z.string().nullable(),
+      cardType: z.string().nullable(),
+      isPassed: z.boolean(),
     }))
     .mutation(async ({ ctx, input }) => {
       try {
-        // 获取游戏状态（实际应从缓存或 WebSocket 获取）
-        // 这里为简化示例，实际应使用 Redis 或内存缓存
-        const gameState: GameStateData = {
-          gameId: input.gameId,
-          status: GameStatus.Playing,
-          players: [],
-          currentRank: Rank.Three,
-          currentRound: {
-            roundNumber: 1,
-            currentPlayer: PlayerPosition.Player0,
-            lastPlay: null,
-            lastPlayer: null,
-            passCount: 0,
-            plays: [],
-          },
-          gameHistory: [],
-          winningTeam: null,
-          startedAt: new Date(),
-          endedAt: null,
-        };
-
-        // 转换卡片格式
-        const cards: Card[] = input.cards.map((c) => ({
-          rank: c.rank as any,
-          suit: c.suit as any,
-        }));
-
-        // 执行出牌
-        const result = playCards(gameState, PlayerPosition.Player0, cards);
-
-        if (!result.success) {
-          return {
-            success: false,
-            error: result.error,
-          };
-        }
-
-        // 如果游戏未结束，执行 AI 出牌
-        if (result.updatedGame && result.updatedGame.status === "playing") {
-          // AI 轮次处理（简化版）
-          // 实际应异步处理
-        }
-
-        return {
-          success: true,
-          gameState: result.updatedGame,
-        };
+        await addGameRound(
+          input.gameId,
+          input.roundNumber,
+          input.playerPosition,
+          input.cardsPlayed,
+          input.cardType,
+          input.isPassed
+        );
+        return { success: true };
       } catch (error) {
-        console.error("Failed to play cards:", error);
-        throw new Error("Failed to play cards");
+        console.error("Failed to record play:", error);
+        // 记录失败不影响游戏进行
+        return { success: false };
       }
     }),
 
   /**
-   * 不要
+   * 完成游戏，保存结果到数据库
    */
-  pass: protectedProcedure
+  finishGame: protectedProcedure
     .input(z.object({
-      gameId: z.string(),
+      gameId: z.number(),
+      winningTeam: z.string(),
+      finalRank: z.string(),
     }))
     .mutation(async ({ ctx, input }) => {
       try {
-        // 获取游戏状态
-        const gameState: GameStateData = {
-          gameId: input.gameId,
-          status: GameStatus.Playing,
-          players: [],
-          currentRank: Rank.Three,
-          currentRound: {
-            roundNumber: 1,
-            currentPlayer: PlayerPosition.Player0,
-            lastPlay: null,
-            lastPlayer: null,
-            passCount: 0,
-            plays: [],
-          },
-          gameHistory: [],
-          winningTeam: null,
-          startedAt: new Date(),
-          endedAt: null,
-        };
-
-        // 执行不要
-        const result = handlePass(gameState, PlayerPosition.Player0);
-
-        if (!result.success) {
-          return {
-            success: false,
-            error: result.error,
-          };
-        }
-
-        return {
-          success: true,
-          gameState: result.updatedGame,
-        };
+        // winningTeam: "team1" -> 1, "team2" -> 2
+        const winningTeamNum = input.winningTeam === "team1" ? 1 : 2;
+        await finishGame(input.gameId, winningTeamNum, JSON.stringify({ finalRank: input.finalRank }));
+        // 更新玩家统计
+        const isWin = input.winningTeam === "team1";
+        const existing = await getPlayerStats(ctx.user.id);
+        const currentWins = existing?.wins ?? 0;
+        const currentLosses = existing?.losses ?? 0;
+        const currentStreak = existing?.winStreak ?? 0;
+        const maxStreak = existing?.maxWinStreak ?? 0;
+        const newStreak = isWin ? currentStreak + 1 : 0;
+        await updatePlayerStats(ctx.user.id, {
+          wins: isWin ? currentWins + 1 : currentWins,
+          losses: isWin ? currentLosses : currentLosses + 1,
+          totalGames: (existing?.totalGames ?? 0) + 1,
+          currentRank: input.finalRank,
+          maxRank: input.finalRank,
+          winStreak: newStreak,
+          maxWinStreak: Math.max(maxStreak, newStreak),
+        });
+        return { success: true };
       } catch (error) {
-        console.error("Failed to pass:", error);
-        throw new Error("Failed to pass");
+        console.error("Failed to finish game:", error);
+        return { success: false };
       }
     }),
 

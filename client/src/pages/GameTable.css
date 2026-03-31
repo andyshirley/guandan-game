@@ -1,157 +1,572 @@
-.game-table-container {
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  grid-template-columns: 1fr;
-  height: 100vh;
-  background: linear-gradient(135deg, #1a472a 0%, #0f2818 100%);
-  color: #fff;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding: 20px;
-  gap: 20px;
-}
-
-.game-table-top {
+/* ===== 整体容器 ===== */
+.gt-container {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at center, #1a5c30 0%, #0d3a1e 60%, #061a0d 100%);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  overflow: hidden;
+}
+
+/* ===== 顶部信息栏 ===== */
+.gt-topbar {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  background: rgba(0, 0, 0, 0.5);
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+  backdrop-filter: blur(8px);
+  flex-shrink: 0;
+  gap: 16px;
 }
 
-.opponent-info {
-  width: 100%;
-  max-width: 300px;
+.gt-back-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.gt-back-btn:hover {
+  border-color: rgba(255, 215, 0, 0.5);
+  color: #ffd700;
 }
 
-.game-table-middle {
-  display: grid;
-  grid-template-columns: 200px 1fr 200px;
-  gap: 30px;
+.gt-game-info {
+  display: flex;
   align-items: center;
-  justify-items: center;
+  gap: 12px;
 }
 
-.opponent-left,
-.opponent-right {
-  width: 100%;
+.gt-rank-badge,
+.gt-round-badge {
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  color: #ffd700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
 }
 
-.play-area-container {
+.gt-rank-badge strong {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.gt-status-msg {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.75);
+  text-align: right;
+  min-width: 160px;
+}
+
+/* ===== 牌桌主体 ===== */
+.gt-table {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  padding: 30px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  min-height: 300px;
+  justify-content: space-between;
+  padding: 16px;
+  gap: 8px;
+  position: relative;
+}
+
+/* ===== AI 玩家显示 ===== */
+.gt-player {
+  display: flex;
   justify-content: center;
 }
 
-.rank-indicator {
+.gt-ai-player {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 18px;
-  font-weight: 600;
-  color: #ffd700;
-}
-
-.rank-indicator .label {
-  color: #aaa;
-}
-
-.rank-indicator .value {
-  font-size: 24px;
-  color: #ffd700;
-}
-
-.round-info {
-  font-size: 14px;
-  color: #aaa;
-  margin-top: 10px;
-}
-
-.game-table-bottom {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-.player-section {
-  width: 100%;
-  max-width: 1000px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.player-hand-container {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  padding: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  transition: all 0.3s ease;
+  position: relative;
 }
 
-.game-status {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: none;
+.gt-ai-player.active {
+  border-color: rgba(255, 215, 0, 0.6);
+  background: rgba(255, 215, 0, 0.08);
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.2);
+}
+
+.gt-ai-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.7);
-  z-index: 1000;
+  font-size: 20px;
 }
 
-.game-status.active {
-  display: flex;
-}
-
-.status-message {
-  background: #fff;
-  color: #000;
-  padding: 40px;
-  border-radius: 12px;
-  text-align: center;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-}
-
-.status-message h2 {
-  font-size: 32px;
-  margin-bottom: 20px;
+.gt-thinking-dots {
+  animation: blink 1s infinite;
+  font-size: 16px;
+  letter-spacing: 2px;
   color: #ffd700;
 }
 
-.status-message p {
-  font-size: 18px;
-  color: #333;
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
-@media (max-width: 1200px) {
-  .game-table-middle {
-    grid-template-columns: 1fr;
+.gt-ai-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.gt-ai-cards {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.gt-turn-arrow {
+  position: absolute;
+  bottom: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ffd700;
+  font-size: 14px;
+  animation: bounce 0.8s infinite;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(4px);
+  }
+}
+
+/* ===== 中间行 ===== */
+.gt-middle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 16px;
+  flex: 1;
+}
+
+.gt-player-left,
+.gt-player-right {
+  flex-shrink: 0;
+}
+
+/* ===== 中央出牌区 ===== */
+.gt-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.gt-play-area {
+  width: 100%;
+  max-width: 480px;
+  min-height: 120px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 215, 0, 0.15);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.gt-last-play {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.gt-last-play-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gt-type-badge {
+  background: rgba(255, 215, 0, 0.2);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  color: #ffd700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.gt-last-play-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.gt-more-cards {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.gt-empty-play {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.4;
+}
+
+.gt-empty-icon {
+  font-size: 36px;
+}
+
+.gt-empty-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ===== 迷你牌 ===== */
+.gt-mini-card {
+  background: #fff;
+  border-radius: 5px;
+  padding: 3px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 30px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.gt-mini-rank {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.gt-mini-suit {
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* ===== 回合指示点 ===== */
+.gt-turn-indicators {
+  display: flex;
+  gap: 8px;
+}
+
+.gt-turn-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: all 0.3s;
+  cursor: default;
+}
+
+.gt-turn-dot.active {
+  background: #ffd700;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+  transform: scale(1.3);
+}
+
+/* ===== 玩家区域（底部） ===== */
+.gt-player-area {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ===== 错误提示 ===== */
+.gt-error-toast {
+  background: rgba(231, 76, 60, 0.9);
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  animation: slideDown 0.3s ease;
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== 牌型验证提示 ===== */
+.gt-validation-hint {
+  font-size: 13px;
+  padding: 5px 14px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.gt-validation-hint.valid {
+  background: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+  border: 1px solid rgba(46, 204, 113, 0.4);
+}
+
+.gt-validation-hint.invalid {
+  background: rgba(231, 76, 60, 0.15);
+  color: #e74c3c;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+/* ===== 手牌区 ===== */
+.gt-hand-area {
+  width: 100%;
+  overflow-x: auto;
+  padding: 8px 0;
+}
+
+.gt-hand-cards {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 16px;
+  min-height: 100px;
+}
+
+/* ===== 手牌卡片 ===== */
+.gt-card {
+  width: 54px;
+  height: 78px;
+  background: #fff;
+  border-radius: 7px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 4px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  position: relative;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.gt-card:hover:not(.disabled) {
+  transform: translateY(-10px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+}
+
+.gt-card.selected {
+  transform: translateY(-14px);
+  box-shadow: 0 0 0 2px #ffd700, 0 10px 24px rgba(255, 215, 0, 0.4);
+  z-index: 20;
+  background: #fffde7;
+}
+
+.gt-card.disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.gt-card-top {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  align-self: flex-start;
+}
+
+.gt-card-suit {
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* ===== 控制区 ===== */
+.gt-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 600px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+.gt-player-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gt-my-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffd700;
+}
+
+.gt-card-count {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.gt-action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.gt-btn {
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.gt-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.gt-btn-pass {
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.gt-btn-pass:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.gt-btn-play {
+  background: rgba(255, 215, 0, 0.2);
+  border: 2px solid rgba(255, 215, 0, 0.4);
+  color: rgba(255, 215, 0, 0.7);
+}
+
+.gt-btn-play.ready {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  border-color: #ffd700;
+  color: #000;
+  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.4);
+}
+
+.gt-btn-play.ready:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 215, 0, 0.5);
+}
+
+.gt-waiting {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+  .gt-topbar {
+    padding: 8px 12px;
+    gap: 8px;
   }
 
-  .opponent-left,
-  .opponent-right {
+  .gt-status-msg {
     display: none;
   }
-}
 
-@media (max-width: 768px) {
-  .game-table-container {
-    padding: 10px;
-    gap: 10px;
+  .gt-table {
+    padding: 8px;
+    gap: 6px;
   }
 
-  .play-area-container {
-    min-height: 200px;
-    padding: 20px;
+  .gt-card {
+    width: 44px;
+    height: 64px;
+    padding: 4px 3px;
   }
 
-  .player-hand-container {
-    padding: 15px;
+  .gt-card-top {
+    font-size: 12px;
+  }
+
+  .gt-card-suit {
+    font-size: 16px;
+  }
+
+  .gt-card:hover:not(.disabled) {
+    transform: translateY(-8px);
+  }
+
+  .gt-card.selected {
+    transform: translateY(-12px);
+  }
+
+  .gt-controls {
+    padding: 8px 12px;
+  }
+
+  .gt-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+
+  .gt-middle-row {
+    gap: 8px;
   }
 }
