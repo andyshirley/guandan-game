@@ -9,6 +9,8 @@ import {
   calculatePlayValue,
   getCardTypeLabel,
   sortCards,
+  findPlayableCombinations,
+  groupCardsByRank,
 } from "@/lib/gameEngine";
 import {
   ArrowLeft,
@@ -21,6 +23,7 @@ import {
   Filter,
   Flame,
   History,
+  Lightbulb,
   RefreshCw,
   Spade,
   TrendingUp,
@@ -95,12 +98,20 @@ export default function GameTable({
   const [historyFilter, setHistoryFilter] = useState<number | "all">("all"); // "all" or PlayerPosition
   const [collapsedRounds, setCollapsedRounds] = useState<Set<number>>(new Set());
   const [historyView, setHistoryView] = useState<"detail" | "summary">("detail"); // 明细 or 汇总
+  const [hoverCard, setHoverCard] = useState<Card | null>(null); // 当前 hover 的牌
+  const lastClickTimeRef = useRef<{ rank: string; suit: string; time: number } | null>(null); // 双击检测
+  const singleClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // 单击即出定时器
+  const gameStateRef = useRef(gameState); // 始终指向最新 gameState，避免陷旧闭包
   const historyEndRef = useRef<HTMLDivElement>(null);
   const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentPlayer = gameState.currentRound.currentPlayer;
   const isMyTurn = currentPlayer === PlayerPosition.Player0;
   const myHand = sortCards(gameState.players[PlayerPosition.Player0].hand, gameState.currentRank);
+
+  // 始终同步最新 gameState 到 ref，供异步回调使用
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+
   const lastPlay = gameState.currentRound.lastPlay;
 
   useEffect(() => {
@@ -141,6 +152,23 @@ export default function GameTable({
     };
     setPlayHistory(prev => [...prev, record]);
   }, []);
+
+  // 统一出牌函数：使用 gameStateRef 避免异步回调中的陷旧闭包
+  const playCards = useCallback((cards: Card[]) => {
+    const state = gameStateRef.current;
+    const result = executePlay(state, PlayerPosition.Player0, cards);
+    if (result.success) {
+      const tLabel = identifyCardType(cards, state.currentRank);
+      setStatusMsg(`你出了 ${tLabel ? getCardTypeLabel(tLabel) : ""}${cards.length > 1 ? `（${cards.length}张）` : ""}`);
+      addPlayRecord(state, PlayerPosition.Player0, cards, false);
+      setSelectedCards([]);
+      setGameState(result.newState!);
+      return true;
+    } else {
+      setErrorMsg(result.error || "出牌失败");
+      return false;
+    }
+  }, [addPlayRecord]);
 
   const runAITurn = useCallback((state: GameStateData) => {
     const pos = state.currentRound.currentPlayer;
@@ -206,15 +234,77 @@ export default function GameTable({
 
   const handleCardClick = (card: Card) => {
     if (!isMyTurn || isAIThinking) return;
+    setErrorMsg("");
+
+    const now = Date.now();
+    const last = lastClickTimeRef.current;
+    const isSameCard = last && last.rank === card.rank && last.suit === card.suit;
+    const isDoubleClick = isSameCard && (now - last!.time) < 350;
+
+    // 双击：全选同点数的所有牌
+    if (isDoubleClick) {
+      lastClickTimeRef.current = null;
+      const sameRankCards = myHand.filter(c => c.rank === card.rank);
+      const allAlreadySelected = sameRankCards.every(c =>
+        selectedCards.some(s => s.rank === c.rank && s.suit === c.suit)
+      );
+      if (allAlreadySelected) {
+        // 已全选则取消全选
+        setSelectedCards(prev => prev.filter(c => c.rank !== card.rank));
+      } else {
+        // 全选同点数
+        setSelectedCards(prev => {
+          const withoutRank = prev.filter(c => c.rank !== card.rank);
+          return [...withoutRank, ...sameRankCards];
+        });
+      }
+      return;
+    }
+
+    // 记录本次点击时间
+    lastClickTimeRef.current = { rank: card.rank, suit: card.suit, time: now };
+
     const isSelected = selectedCards.some(
       (c) => c.rank === card.rank && c.suit === card.suit
     );
+
     if (isSelected) {
+      // 已选中：取消选中
       setSelectedCards(prev => prev.filter(c => !(c.rank === card.rank && c.suit === card.suit)));
-    } else {
-      setSelectedCards(prev => [...prev, card]);
+      return;
     }
-    setErrorMsg("");
+
+    // 未选中：先选中该牌
+    const newSelected = [...selectedCards, card];
+    setSelectedCards(newSelected);
+
+    // 单张即出：当前未选任何牌时，单击一张合法牌则延迟出牌（给双击留出时间）
+    if (selectedCards.length === 0) {
+      const state = gameStateRef.current;
+      const type = identifyCardType(newSelected, state.currentRank);
+      if (type) {
+        const play = {
+          type,
+          cards: newSelected,
+          value: calculatePlayValue(newSelected, type, state.currentRank),
+        };
+        if (canPlayCards(play, state.currentRound.lastPlay, state.currentRank)) {
+          // 清除上一次定时器
+          if (singleClickTimerRef.current) clearTimeout(singleClickTimerRef.current);
+          singleClickTimerRef.current = setTimeout(() => {
+            singleClickTimerRef.current = null;
+            // 只有当前选牌仍是这一张时才出牌（双击会改变选牌）
+            setSelectedCards(prev => {
+              if (prev.length === 1 && prev[0].rank === card.rank && prev[0].suit === card.suit) {
+                playCards(prev);
+                return [];
+              }
+              return prev;
+            });
+          }, 320);
+        }
+      }
+    }
   };
 
   const handlePlay = () => {
@@ -222,16 +312,7 @@ export default function GameTable({
       setErrorMsg("请先选择要出的牌");
       return;
     }
-    const result = executePlay(gameState, PlayerPosition.Player0, selectedCards);
-    if (!result.success) {
-      setErrorMsg(result.error || "出牌失败");
-      return;
-    }
-    const typeLabel = identifyCardType(selectedCards, gameState.currentRank);
-    setStatusMsg(`你出了 ${typeLabel ? getCardTypeLabel(typeLabel) : ""}（${selectedCards.length}张）`);
-    addPlayRecord(gameState, PlayerPosition.Player0, selectedCards, false);
-    setSelectedCards([]);
-    setGameState(result.newState!);
+    playCards(selectedCards);
   };
 
   const handlePass = () => {
@@ -267,6 +348,110 @@ export default function GameTable({
   };
 
   const validation = getPlayValidation();
+
+  // ===== 智能推荐：当选了部分牌时，找出所有包含已选牌的合法组合 =====
+  const recommendations: Card[][] = (() => {
+    if (!isMyTurn || isAIThinking || selectedCards.length === 0) return [];
+    if (validation.valid) return []; // 已经是合法牌型，无需推荐
+    const results: Card[][] = [];
+    const hand = myHand;
+    const currentRank = gameState.currentRank;
+    // 基于已选牌找包含它们的合法组合
+    if (lastPlay) {
+      const candidates = findPlayableCombinations(hand, lastPlay, currentRank);
+      for (const combo of candidates) {
+        const hasAllSelected = selectedCards.every(s =>
+          combo.some(c => c.rank === s.rank && c.suit === s.suit)
+        );
+        if (hasAllSelected) results.push(combo);
+      }
+    } else {
+      // 首出：找包含已选牌的合法牌型
+      const groups = groupCardsByRank(hand);
+      // 对子
+      for (const [, cards] of Object.entries(groups)) {
+        if (cards.length >= 2) {
+          const pair = cards.slice(0, 2);
+          if (selectedCards.every(s => pair.some(c => c.rank === s.rank && c.suit === s.suit))) {
+            if (identifyCardType(pair, currentRank)) results.push(pair);
+          }
+        }
+        // 三张
+        if (cards.length >= 3) {
+          const triple = cards.slice(0, 3);
+          if (selectedCards.every(s => triple.some(c => c.rank === s.rank && c.suit === s.suit))) {
+            if (identifyCardType(triple, currentRank)) results.push(triple);
+          }
+        }
+        // 炸弹
+        if (cards.length >= 4) {
+          const bomb = cards.slice(0, 4);
+          if (selectedCards.every(s => bomb.some(c => c.rank === s.rank && c.suit === s.suit))) {
+            if (identifyCardType(bomb, currentRank)) results.push(bomb);
+          }
+        }
+      }
+    }
+    // 去重并按牌数排序
+    const seen = new Set<string>();
+    return results
+      .filter(combo => {
+        const key = combo.map(c => `${c.rank}-${c.suit}`).sort().join(",");
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => a.length - b.length)
+      .slice(0, 4); // 最多显示 4 个推荐
+  })();
+
+  // ===== 键盘快捷键：使用 ref 避免频繁重绑 =====
+  const selectedCardsRef = useRef(selectedCards);
+  useEffect(() => { selectedCardsRef.current = selectedCards; }, [selectedCards]);
+  const isMyTurnRef = useRef(isMyTurn);
+  useEffect(() => { isMyTurnRef.current = isMyTurn; }, [isMyTurn]);
+  const isAIThinkingRef = useRef(isAIThinking);
+  useEffect(() => { isAIThinkingRef.current = isAIThinking; }, [isAIThinking]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isMyTurnRef.current || isAIThinkingRef.current) return;
+      if ((e.target as HTMLElement).tagName === "INPUT" || (e.target as HTMLElement).tagName === "TEXTAREA") return;
+      const state = gameStateRef.current;
+      const cards = selectedCardsRef.current;
+      if (e.key === " " || e.key === "Enter") {
+        e.preventDefault();
+        if (cards.length > 0) {
+          const type = identifyCardType(cards, state.currentRank);
+          if (type) {
+            const play = { type, cards, value: calculatePlayValue(cards, type, state.currentRank) };
+            if (canPlayCards(play, state.currentRound.lastPlay, state.currentRank)) {
+              playCards(cards);
+            }
+          }
+        }
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setSelectedCards([]);
+        setErrorMsg("");
+      } else if (e.key === "p" || e.key === "P") {
+        e.preventDefault();
+        if (state.currentRound.lastPlay) {
+          const result = executePass(state, PlayerPosition.Player0);
+          if (result.success) {
+            setStatusMsg("你选择不要");
+            addPlayRecord(state, PlayerPosition.Player0, [], true);
+            setSelectedCards([]);
+            setGameState(result.newState!);
+          }
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  // 只在挂载时绑定一次，所有状态通过 ref 访问
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playCards, addPlayRecord]);
 
   return (
     <div className="gt-root">
@@ -440,12 +625,25 @@ export default function GameTable({
                   // 同点数分组：当前牌与上一张点数不同时，加大间距
                   const prevCard = index > 0 ? myHand[index - 1] : null;
                   const isGroupStart = index > 0 && prevCard && prevCard.rank !== card.rank;
+                  // 单张 hover 即出提示：当未选任何牌时， hover 单张且合法，显示即出提示
+                  const isHovered = hoverCard?.rank === card.rank && hoverCard?.suit === card.suit;
+                  const showInstantTip = isHovered && isMyTurn && !isAIThinking && selectedCards.length === 0 && (() => {
+                    const type = identifyCardType([card], gameState.currentRank);
+                    if (!type) return false;
+                    const play = { type, cards: [card], value: calculatePlayValue([card], type, gameState.currentRank) };
+                    return canPlayCards(play, lastPlay, gameState.currentRank);
+                  })();
                   return (
                     <div
                       key={`${card.rank}-${card.suit}-${index}`}
-                      className={`gt-card${isSelected ? " selected" : ""}${!isMyTurn || isAIThinking ? " disabled" : ""}${isJoker ? (isBig ? " joker-big" : " joker-small") : ""}${isRed ? " red" : ""}${isGroupStart ? " group-start" : ""}`}
+                      className={`gt-card${isSelected ? " selected" : ""}${!isMyTurn || isAIThinking ? " disabled" : ""}${isJoker ? (isBig ? " joker-big" : " joker-small") : ""}${isRed ? " red" : ""}${isGroupStart ? " group-start" : ""}${showInstantTip ? " instant-tip" : ""}`}
                       onClick={() => handleCardClick(card)}
+                      onMouseEnter={() => setHoverCard(card)}
+                      onMouseLeave={() => setHoverCard(null)}
                     >
+                      {showInstantTip && (
+                        <div className="gt-instant-tip">点击出牌</div>
+                      )}
                       {/* 左上角 */}
                       <div className="gt-card-tl">
                         <span className="gt-rank">{getRankDisplay(card.rank)}</span>
@@ -469,6 +667,32 @@ export default function GameTable({
                 })}
               </div>
             </div>
+
+            {/* 智能推荐出牌条 */}
+            {recommendations.length > 0 && (
+              <div className="gt-recommendations">
+                <span className="gt-rec-label"><Lightbulb size={12} /> 推荐</span>
+                {recommendations.map((combo, i) => {
+                  const type = identifyCardType(combo, gameState.currentRank);
+                  return (
+                    <button
+                      key={i}
+                      className="gt-rec-chip"
+                      onClick={() => playCards(combo)}
+                    >
+                      {type ? getCardTypeLabel(type) : ""}
+                      <span className="gt-rec-cards">
+                        {combo.map((c, ci) => (
+                          <span key={ci} className={`gt-rec-card-val${c.suit === "hearts" || c.suit === "diamonds" ? " red" : ""}`}>
+                            {getRankDisplay(c.rank)}
+                          </span>
+                        ))}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* 控制栏 */}
             <div className="gt-control-bar">
@@ -495,17 +719,21 @@ export default function GameTable({
                   </div>
                 ) : (
                   <>
-                    <button
-                      className="gt-btn-pass"
-                      onClick={handlePass}
-                      disabled={!isMyTurn || isAIThinking || !lastPlay}
-                    >
-                      不要
-                    </button>
+                    {lastPlay && (
+                      <button
+                        className="gt-btn-pass"
+                        onClick={handlePass}
+                        disabled={!isMyTurn || isAIThinking}
+                        title="不要 (P)"
+                      >
+                        不要
+                      </button>
+                    )}
                     <button
                       className={`gt-btn-play${validation.valid ? " ready" : ""}`}
                       onClick={handlePlay}
                       disabled={!isMyTurn || isAIThinking || selectedCards.length === 0 || !validation.valid}
+                      title={validation.valid ? "出牌 (Space/Enter)" : validation.reason}
                     >
                       {selectedCards.length > 0 ? `出牌（${selectedCards.length}张）` : "出牌"}
                     </button>

@@ -354,7 +354,7 @@ export function getAIMove(
 /**
  * 找到所有可以出的牌型组合
  */
-function findPlayableCombinations(
+export function findPlayableCombinations(
   hand: Card[],
   lastPlay: CardPlay,
   currentRank: Rank
