@@ -3,7 +3,6 @@ import { Card, CardType, GameStateData, PlayerPosition, Rank, GameStatus, Team }
 import {
   executePlay,
   executePass,
-  getAIMove,
   identifyCardType,
   canPlayCards,
   calculatePlayValue,
@@ -12,6 +11,12 @@ import {
   findPlayableCombinations,
   groupCardsByRank,
 } from "@/lib/gameEngine";
+import {
+  danzeroGetAIMove,
+  updateDanzeroHistory,
+  createDanzeroHistory,
+  type DanzeroGameHistory,
+} from "@/lib/danzeroAI";
 import {
   ArrowLeft,
   Bot,
@@ -104,6 +109,7 @@ export default function GameTable({
   const gameStateRef = useRef(gameState); // 始终指向最新 gameState，避免陷旧闭包
   const historyEndRef = useRef<HTMLDivElement>(null);
   const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const danzeroHistoryRef = useRef<DanzeroGameHistory>(createDanzeroHistory());
 
   const currentPlayer = gameState.currentRound.currentPlayer;
   const isMyTurn = currentPlayer === PlayerPosition.Player0;
@@ -161,6 +167,7 @@ export default function GameTable({
       const tLabel = identifyCardType(cards, state.currentRank);
       setStatusMsg(`你出了 ${tLabel ? getCardTypeLabel(tLabel) : ""}${cards.length > 1 ? `（${cards.length}张）` : ""}`);
       addPlayRecord(state, PlayerPosition.Player0, cards, false);
+      updateDanzeroHistory(danzeroHistoryRef.current, PlayerPosition.Player0, cards, PlayerPosition.Player0);
       setSelectedCards([]);
       setGameState(result.newState!);
       return true;
@@ -179,7 +186,7 @@ export default function GameTable({
     const delay = 600 + Math.random() * 500;
 
     aiTimerRef.current = setTimeout(() => {
-      const aiCards = getAIMove(state, pos);
+      const aiCards = danzeroGetAIMove(state, pos, danzeroHistoryRef.current);
 
       let newState: GameStateData;
       if (aiCards && aiCards.length > 0) {
@@ -189,11 +196,13 @@ export default function GameTable({
           const typeLabel = identifyCardType(aiCards, state.currentRank);
           setStatusMsg(`${getPlayerLabel(pos)} 出了 ${typeLabel ? getCardTypeLabel(typeLabel) : ""}（${aiCards.length}张）`);
           addPlayRecord(state, pos, aiCards, false);
+          updateDanzeroHistory(danzeroHistoryRef.current, pos, aiCards, PlayerPosition.Player0);
         } else {
           const passResult = executePass(state, pos);
           newState = passResult.newState!;
           setStatusMsg(`${getPlayerLabel(pos)} 不要`);
           addPlayRecord(state, pos, [], true);
+          updateDanzeroHistory(danzeroHistoryRef.current, pos, [], PlayerPosition.Player0);
         }
       } else {
         const passResult = executePass(state, pos);
@@ -201,6 +210,7 @@ export default function GameTable({
           newState = passResult.newState;
           setStatusMsg(`${getPlayerLabel(pos)} 不要`);
           addPlayRecord(state, pos, [], true);
+          updateDanzeroHistory(danzeroHistoryRef.current, pos, [], PlayerPosition.Player0);
         } else {
           setIsAIThinking(false);
           return;
@@ -327,6 +337,7 @@ export default function GameTable({
     }
     setStatusMsg("你选择不要");
     addPlayRecord(gameState, PlayerPosition.Player0, [], true);
+    updateDanzeroHistory(danzeroHistoryRef.current, PlayerPosition.Player0, [], PlayerPosition.Player0);
     setSelectedCards([]);
     setGameState(result.newState!);
   };

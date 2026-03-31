@@ -115,3 +115,17 @@
 
 ## 手牌 disabled 状态修复
 - [x] 非玩家回合时手牌保持深色豪华风格，仅降低透明度+禁用鼠标，不变灰白色
+
+## Danzero+ AI 逻辑移植
+- [x] 精读 Danzero+ actor.py 源码，分析状态编码和动作空间
+- [x] 将 Danzero+ 的状态编码逻辑移植为 TypeScript（card2num/card2array/buildStateVector/procUniversal）
+- [x] 将 Danzero+ 的动作生成/过滤逻辑移植为 TypeScript（combineHandcards/chooseBestFirstPlay/chooseBestResponse）
+- [x] 实现基于 Danzero+ 规则的高质量 AI 决策（danzeroGetAIMove 替换简单贪心算法）
+- [x] 集成历史追踪（updateDanzeroHistory），支持对手手牌估计和队友协作判断
+- [x] 42 个单元测试全部通过，TypeScript 编译无报错
+
+## Danzero+ AI 补充完善
+- [x] 为 danzeroAI.ts 新增单元测试：覆盖 card2num/card2array/procUniversal 维度正确性
+- [x] 为 combineHandcards/chooseBestFirstPlay/chooseBestResponse 增加行为测试
+- [x] 游戏新开局时重置 danzeroHistoryRef：通过 GameTable key={gameState.gameId} 确保新局重新挂载
+- [x] 同步追踪玩家出牌和不要到 danzeroHistoryRef（全路径已覆盖）

@@ -84,6 +84,7 @@ export default function GameLobby() {
   if (view === "playing" && gameState) {
     return (
       <GameTable
+        key={gameState.gameId}
         gameState={gameState}
         playerName={user?.name || "玩家"}
         onGameEnd={handleGameEnd}
