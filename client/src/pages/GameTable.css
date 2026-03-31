@@ -474,7 +474,7 @@
 .gt-card:first-child { margin-left: 0; }
 
 .gt-card:hover:not(.disabled) {
-  /* transform is handled by JS for fan layout */
+  transform: translateY(-12px);
   box-shadow:
     0 10px 24px rgba(0,0,0,0.55),
     0 3px 8px rgba(0,0,0,0.3),
@@ -482,7 +482,7 @@
   z-index: 8;
 }
 .gt-card.selected {
-  /* transform is handled by JS for fan layout */
+  transform: translateY(-16px);
   box-shadow:
     0 12px 28px rgba(212,175,55,0.55),
     0 3px 10px rgba(0,0,0,0.3),

@@ -431,24 +431,10 @@ export default function GameTable({
                   const isJoker = card.rank === "joker_small" || card.rank === "joker_big";
                   const isBig = card.rank === "joker_big";
                   const isRed = card.suit === "hearts" || card.suit === "diamonds";
-                  // 扇形角度计算：以中心为0，向两侧展开
-                  const total = myHand.length;
-                  const mid = (total - 1) / 2;
-                  const maxAngle = Math.min(2.5, 60 / total); // 每张牌的角度，牌多时自动缩小
-                  const angle = (index - mid) * maxAngle;
-                  const vertOffset = Math.abs(index - mid) * 0.8; // 两侧牌略微下沉
-                  const cardStyle: React.CSSProperties = {
-                    transform: isSelected
-                      ? `rotate(${angle}deg) translateY(calc(-16px - ${vertOffset}px))`
-                      : `rotate(${angle}deg) translateY(${vertOffset}px)`,
-                    transformOrigin: 'bottom center',
-                    zIndex: isSelected ? 9 + index : index,
-                  };
                   return (
                     <div
                       key={`${card.rank}-${card.suit}-${index}`}
                       className={`gt-card${isSelected ? " selected" : ""}${!isMyTurn || isAIThinking ? " disabled" : ""}${isJoker ? (isBig ? " joker-big" : " joker-small") : ""}${isRed ? " red" : ""}`}
-                      style={cardStyle}
                       onClick={() => handleCardClick(card)}
                     >
                       {/* 左上角 */}
