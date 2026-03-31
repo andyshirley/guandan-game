@@ -129,3 +129,6 @@
 - [x] 为 combineHandcards/chooseBestFirstPlay/chooseBestResponse 增加行为测试
 - [x] 游戏新开局时重置 danzeroHistoryRef：通过 GameTable key={gameState.gameId} 确保新局重新挂载
 - [x] 同步追踪玩家出牌和不要到 danzeroHistoryRef（全路径已覆盖）
+
+## 项目文档
+- [x] 新增中文 README.md，涵盖项目介绍、功能特性、技术架构、AI 说明、本地开发指南
