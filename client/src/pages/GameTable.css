@@ -438,71 +438,76 @@
 .gt-hand-wrap::-webkit-scrollbar { height: 3px; }
 .gt-hand-wrap::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.18); border-radius: 2px; }
 
-/* 扇形叠牌容器 — 使用 padding-top 为上移的牌留出空间 */
+/* 叠牌容器 — 使用 padding-top 为上移的牌留出空间 */
 .gt-hand {
   display: flex;
   align-items: flex-end;
   width: max-content;
   margin: 0 auto;
-  padding-top: 20px;   /* 为 hover/selected 上移留出空间 */
+  padding-top: 28px;   /* 为 hover/selected 上移留出足够空间 */
 }
 
 /* ---- 手牌卡片 ---- */
 .gt-card {
   position: relative;
-  width: 48px;
-  height: 68px;
-  border-radius: 7px;
+  width: 62px;
+  height: 88px;
+  border-radius: 9px;
   background: #fff;
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1.5px solid rgba(0,0,0,0.1);
   box-shadow:
-    0 2px 8px rgba(0,0,0,0.4),
-    0 1px 2px rgba(0,0,0,0.2),
-    inset 0 1px 0 rgba(255,255,255,0.9);
+    0 3px 10px rgba(0,0,0,0.45),
+    0 1px 3px rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.95);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 3px 4px;
-  margin-left: -12px;
+  padding: 4px 5px;
+  margin-left: -22px;   /* 加大间距：让点数和花色均可见 */
   color: #1a202c;
   overflow: visible;
   z-index: 1;
+  user-select: none;
 }
 .gt-card:first-child { margin-left: 0; }
 
+/* 同点数分组间隔：在 JSX 中通过 .gt-card-group-gap 类名添加 */
+.gt-card.group-start { margin-left: -10px; }
+.gt-card.group-start:first-child { margin-left: 0; }
+
 .gt-card:hover:not(.disabled) {
-  transform: translateY(-12px);
+  transform: translateY(-14px);
   box-shadow:
-    0 10px 24px rgba(0,0,0,0.55),
-    0 3px 8px rgba(0,0,0,0.3),
-    inset 0 1px 0 rgba(255,255,255,0.9);
+    0 14px 28px rgba(0,0,0,0.55),
+    0 4px 10px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.95);
   z-index: 8;
 }
 .gt-card.selected {
-  transform: translateY(-16px);
+  transform: translateY(-20px);
   box-shadow:
-    0 12px 28px rgba(212,175,55,0.55),
-    0 3px 10px rgba(0,0,0,0.3),
-    inset 0 1px 0 rgba(255,255,255,0.9);
+    0 16px 32px rgba(212,175,55,0.6),
+    0 4px 12px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.95);
   border-color: #d4af37;
-  border-width: 1.5px;
+  border-width: 2px;
   background: #fffef5;
   z-index: 9;
 }
-.gt-card.disabled { cursor: not-allowed; opacity: 0.65; }
-.gt-card.red { color: #c53030; }
+.gt-card.disabled { cursor: not-allowed; opacity: 0.6; }
+.gt-card.red { color: #c0392b; }
 .gt-card.joker-small {
-  background: linear-gradient(160deg, #fff 0%, #eafaf0 100%);
+  background: linear-gradient(160deg, #fff 0%, #e8faf0 100%);
   color: #1a7a3a;
-  border-color: rgba(34,197,94,0.2);
+  border-color: rgba(34,197,94,0.3);
 }
 .gt-card.joker-big {
-  background: linear-gradient(160deg, #fff 0%, #fff8ec 100%);
-  color: #c05000;
-  border-color: rgba(212,175,55,0.3);
+  background: linear-gradient(160deg, #fff 0%, #fff5e0 100%);
+  color: #b84500;
+  border-color: rgba(212,175,55,0.4);
 }
 
 .gt-card-tl {
@@ -510,6 +515,7 @@
   flex-direction: column;
   align-items: flex-start;
   line-height: 1.1;
+  gap: 1px;
 }
 .gt-card-mid {
   display: flex;
@@ -522,12 +528,13 @@
   flex-direction: column;
   align-items: flex-end;
   line-height: 1.1;
+  gap: 1px;
   transform: rotate(180deg);
 }
-.gt-rank { font-size: 12px; font-weight: 800; line-height: 1; }
-.gt-suit-sm { font-size: 9px; line-height: 1; }
-.gt-suit-lg { font-size: 22px; line-height: 1; }
-.gt-joker-text { font-size: 10px; font-weight: 800; letter-spacing: -0.5px; }
+.gt-rank { font-size: 15px; font-weight: 900; line-height: 1; letter-spacing: -0.5px; }
+.gt-suit-sm { font-size: 11px; line-height: 1; }
+.gt-suit-lg { font-size: 28px; line-height: 1; }
+.gt-joker-text { font-size: 12px; font-weight: 900; letter-spacing: -0.5px; line-height: 1.2; text-align: center; }
 
 /* ---- 控制栏 ---- */
 .gt-control-bar {

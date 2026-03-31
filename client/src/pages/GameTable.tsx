@@ -427,7 +427,7 @@ export default function GameTable({
               </div>
             )}
 
-            {/* 手牌 — 扇形叠牌展示 */}
+            {/* 手牌 — 展开叠牌展示 */}
             <div className="gt-hand-wrap">
               <div className="gt-hand">
                 {myHand.map((card, index) => {
@@ -437,10 +437,13 @@ export default function GameTable({
                   const isJoker = card.rank === "joker_small" || card.rank === "joker_big";
                   const isBig = card.rank === "joker_big";
                   const isRed = card.suit === "hearts" || card.suit === "diamonds";
+                  // 同点数分组：当前牌与上一张点数不同时，加大间距
+                  const prevCard = index > 0 ? myHand[index - 1] : null;
+                  const isGroupStart = index > 0 && prevCard && prevCard.rank !== card.rank;
                   return (
                     <div
                       key={`${card.rank}-${card.suit}-${index}`}
-                      className={`gt-card${isSelected ? " selected" : ""}${!isMyTurn || isAIThinking ? " disabled" : ""}${isJoker ? (isBig ? " joker-big" : " joker-small") : ""}${isRed ? " red" : ""}`}
+                      className={`gt-card${isSelected ? " selected" : ""}${!isMyTurn || isAIThinking ? " disabled" : ""}${isJoker ? (isBig ? " joker-big" : " joker-small") : ""}${isRed ? " red" : ""}${isGroupStart ? " group-start" : ""}`}
                       onClick={() => handleCardClick(card)}
                     >
                       {/* 左上角 */}
