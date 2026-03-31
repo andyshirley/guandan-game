@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, games, gameRounds, playerStats } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,120 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+/**
+ * 游戏相关的数据库查询函数
+ */
+
+export async function createGame(
+  createdBy: number,
+  currentRank: string,
+  gameData: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(games).values({
+    createdBy,
+    currentRank,
+    gameData,
+    status: "playing",
+  });
+
+  return result;
+}
+
+export async function finishGame(
+  gameId: number,
+  winningTeam: number,
+  gameData: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(games)
+    .set({
+      status: "finished",
+      winningTeam,
+      endedAt: new Date(),
+      gameData,
+    })
+    .where(eq(games.id, gameId));
+}
+
+export async function getGameById(gameId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(games).where(eq(games.id, gameId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function addGameRound(
+  gameId: number,
+  roundNumber: number,
+  playerPosition: number,
+  cardsPlayed: string | null,
+  cardType: string | null,
+  isPassed: boolean
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.insert(gameRounds).values({
+    gameId,
+    roundNumber,
+    playerPosition,
+    cardsPlayed,
+    cardType,
+    isPassed,
+  });
+}
+
+export async function getPlayerStats(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db
+    .select()
+    .from(playerStats)
+    .where(eq(playerStats.userId, userId))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updatePlayerStats(
+  userId: number,
+  stats: Partial<typeof playerStats.$inferInsert>
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const existing = await getPlayerStats(userId);
+  if (existing) {
+    await db
+      .update(playerStats)
+      .set(stats)
+      .where(eq(playerStats.userId, userId));
+  } else {
+    await db.insert(playerStats).values({
+      userId,
+      ...stats,
+    });
+  }
+}
+
+export async function getGameHistory(userId: number, limit: number = 20) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db
+    .select()
+    .from(games)
+    .where(eq(games.createdBy, userId))
+    .orderBy(desc(games.createdAt))
+    .limit(limit);
+
+  return result;
+}

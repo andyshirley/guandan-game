@@ -1,0 +1,98 @@
+.player-info {
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.player-info.active {
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.player-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.player-name {
+  color: #fff;
+}
+
+.ai-badge {
+  background: rgba(100, 200, 255, 0.3);
+  color: #64c8ff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.player-stats {
+  display: flex;
+  gap: 15px;
+  font-size: 12px;
+}
+
+.cards-remaining {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cards-remaining .label {
+  color: #aaa;
+}
+
+.cards-remaining .value {
+  color: #ffd700;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.turn-indicator {
+  position: absolute;
+  top: -10px;
+  right: 10px;
+  background: #ffd700;
+  color: #000;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.pulse {
+  display: inline-block;
+}
+
+.player-top {
+  text-align: center;
+}
+
+.player-left {
+  text-align: left;
+}
+
+.player-right {
+  text-align: right;
+}
