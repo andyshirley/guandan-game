@@ -94,6 +94,7 @@ export default function GameTable({
   const [playHistory, setPlayHistory] = useState<PlayRecord[]>([]);
   const [historyFilter, setHistoryFilter] = useState<number | "all">("all"); // "all" or PlayerPosition
   const [collapsedRounds, setCollapsedRounds] = useState<Set<number>>(new Set());
+  const [historyView, setHistoryView] = useState<"detail" | "summary">("detail"); // 明细 or 汇总
   const historyEndRef = useRef<HTMLDivElement>(null);
   const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -531,29 +532,41 @@ export default function GameTable({
               <span>牌谱</span>
               <span className="gt-history-count">{playHistory.length}</span>
             </div>
+            <div className="gt-history-view-toggle">
+              <button
+                className={`gt-view-btn${historyView === "detail" ? " active" : ""}`}
+                onClick={() => setHistoryView("detail")}
+              >明细</button>
+              <button
+                className={`gt-view-btn${historyView === "summary" ? " active" : ""}`}
+                onClick={() => setHistoryView("summary")}
+              >汇总</button>
+            </div>
             <button className="gt-history-close" onClick={() => setShowHistory(false)}>
               <X size={15} />
             </button>
           </div>
 
-          {/* 玩家筛选 Tab */}
-          <div className="gt-history-tabs">
-            {([
-              { key: "all", label: "全部" },
-              { key: PlayerPosition.Player0, label: "我" },
-              { key: PlayerPosition.Player2, label: "北" },
-              { key: PlayerPosition.Player1, label: "东" },
-              { key: PlayerPosition.Player3, label: "西" },
-            ] as { key: number | "all"; label: string }[]).map(tab => (
-              <button
-                key={String(tab.key)}
-                className={`gt-history-tab${historyFilter === tab.key ? " active" : ""}`}
-                onClick={() => setHistoryFilter(tab.key)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          {/* 玩家筛选 Tab（仅明细模式显示） */}
+          {historyView === "detail" && (
+            <div className="gt-history-tabs">
+              {([
+                { key: "all", label: "全部" },
+                { key: PlayerPosition.Player0, label: "我" },
+                { key: PlayerPosition.Player2, label: "北" },
+                { key: PlayerPosition.Player1, label: "东" },
+                { key: PlayerPosition.Player3, label: "西" },
+              ] as { key: number | "all"; label: string }[]).map(tab => (
+                <button
+                  key={String(tab.key)}
+                  className={`gt-history-tab${historyFilter === tab.key ? " active" : ""}`}
+                  onClick={() => setHistoryFilter(tab.key)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* 内容区 */}
           <div className="gt-history-body">
@@ -562,7 +575,114 @@ export default function GameTable({
                 <Clock size={22} />
                 <span>暂无记录</span>
               </div>
-            ) : (() => {
+            ) : historyView === "summary" ? (() => {
+              // ===== 汇总视图 =====
+              const plays = playHistory.filter(r => !r.isPassed);
+              const passes = playHistory.filter(r => r.isPassed);
+
+              // 各玩家统计
+              const playerLabels = ["我（南）", "东家", "北家", "西家"];
+              const playerColors = ["mine", "enemy", "ally", "enemy"];
+              const playerStats = [0, 1, 2, 3].map(pos => {
+                const myPlays = plays.filter(r => r.playerPos === pos);
+                const myPasses = passes.filter(r => r.playerPos === pos);
+                const bombs = myPlays.filter(r => r.cardType === "炸弹" || r.cardType === "王炸");
+                return { pos, label: playerLabels[pos], color: playerColors[pos], plays: myPlays.length, passes: myPasses.length, bombs: bombs.length };
+              });
+
+              // 牌型分类汇总
+              const typeOrder = ["单牌", "对子", "三张", "三带一", "三带二", "顺子", "连对", "飞机", "炸弹", "王炸"];
+              const typeMap: Map<string, { count: number; best: PlayRecord }> = new Map();
+              plays.forEach(r => {
+                const t = r.cardType || "其他";
+                if (!typeMap.has(t)) typeMap.set(t, { count: 0, best: r });
+                const entry = typeMap.get(t)!;
+                entry.count++;
+                // 保留牌数最多的作为代表
+                if (r.cards.length > entry.best.cards.length) entry.best = r;
+              });
+              const sortedTypes = Array.from(typeMap.entries()).sort((a, b) => {
+                const ai = typeOrder.indexOf(a[0]);
+                const bi = typeOrder.indexOf(b[0]);
+                if (ai === -1 && bi === -1) return b[1].count - a[1].count;
+                if (ai === -1) return 1;
+                if (bi === -1) return -1;
+                return ai - bi;
+              });
+
+              return (
+                <div className="gt-summary">
+                  {/* 玩家统计卡片 */}
+                  <div className="gt-summary-section-title">
+                    <Users size={11} />
+                    <span>玩家出牌统计</span>
+                  </div>
+                  <div className="gt-player-stats">
+                    {playerStats.map(ps => (
+                      <div key={ps.pos} className={`gt-player-stat-card ${ps.color}`}>
+                        <div className="gt-pstat-name">
+                          <span className={`gt-history-dot ${ps.color}`} />
+                          {ps.label}
+                        </div>
+                        <div className="gt-pstat-nums">
+                          <div className="gt-pstat-item">
+                            <span className="gt-pstat-val">{ps.plays}</span>
+                            <span className="gt-pstat-lbl">出牌</span>
+                          </div>
+                          <div className="gt-pstat-item">
+                            <span className="gt-pstat-val">{ps.passes}</span>
+                            <span className="gt-pstat-lbl">不要</span>
+                          </div>
+                          <div className={`gt-pstat-item${ps.bombs > 0 ? " bomb" : ""}`}>
+                            <span className="gt-pstat-val">{ps.bombs}</span>
+                            <span className="gt-pstat-lbl">炸弹</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 牌型分类汇总 */}
+                  <div className="gt-summary-section-title" style={{ marginTop: 14 }}>
+                    <Filter size={11} />
+                    <span>牌型分类汇总</span>
+                  </div>
+                  <div className="gt-type-summary">
+                    {sortedTypes.map(([type, { count, best }]) => {
+                      const isBomb = type === "炸弹" || type === "王炸";
+                      return (
+                        <div key={type} className={`gt-type-row${isBomb ? " bomb" : ""}`}>
+                          <div className="gt-type-row-left">
+                            <span className={`gt-type-name-badge${isBomb ? " bomb" : ""}`}>
+                              {isBomb && <Flame size={9} />}{type}
+                            </span>
+                            <span className="gt-type-count">×{count}</span>
+                          </div>
+                          <div className="gt-type-row-cards">
+                            {best.cards.slice(0, 6).map((c, ci) => {
+                              const isRed = c.suit === "hearts" || c.suit === "diamonds";
+                              const isJoker = c.rank === "joker_small" || c.rank === "joker_big";
+                              return (
+                                <span
+                                  key={ci}
+                                  className={`gt-history-card${isRed || (isJoker && c.rank === "joker_big") ? " red" : ""}${isJoker ? " joker" : ""}`}
+                                >
+                                  {getRankDisplay(c.rank)}
+                                  {!isJoker ? <sub className="gt-card-suit-sub">{SUIT_SYMBOLS[c.suit] || ""}</sub> : null}
+                                </span>
+                              );
+                            })}
+                            {best.cards.length > 6 && (
+                              <span className="gt-type-more">+{best.cards.length - 6}</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })() : (() => {
               // 按玩家筛选
               const filtered = historyFilter === "all"
                 ? playHistory
