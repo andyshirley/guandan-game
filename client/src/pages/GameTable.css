@@ -497,7 +497,12 @@
   background: #fffef5;
   z-index: 9;
 }
-.gt-card.disabled { cursor: not-allowed; opacity: 0.6; }
+.gt-card.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  filter: none; /* 不加灰度滤镜，保持原始牌面风格 */
+  pointer-events: none;
+}
 .gt-card.red { color: #c0392b; }
 .gt-card.joker-small {
   background: linear-gradient(160deg, #fff 0%, #e8faf0 100%);
