@@ -299,30 +299,7 @@ export default function GameTable({
     const newSelected = [...selectedCards, card];
     setSelectedCards(newSelected);
 
-    // 单张即出：当前未选任何牌时，单击一张合法牌则延迟出牌（给双击留出时间）
-    if (selectedCards.length === 0) {
-      const state = gameStateRef.current;
-      const type = identifyCardType(newSelected, state.currentRank);
-      if (type) {
-        const play = {
-          type,
-          cards: newSelected,
-          value: calculatePlayValue(newSelected, type, state.currentRank),
-        };
-        if (canPlayCards(play, state.currentRound.lastPlay, state.currentRank)) {
-          // 清除上一次定时器
-          if (singleClickTimerRef.current) clearTimeout(singleClickTimerRef.current);
-          singleClickTimerRef.current = setTimeout(() => {
-            singleClickTimerRef.current = null;
-            // 通过 ref 读取最新选牌状态，避免陈旧闭包
-            const current = selectedCardsRef.current;
-            if (current.length === 1 && current[0].rank === card.rank && current[0].suit === card.suit) {
-              playCardsRef.current(current);
-            }
-          }, 320);
-        }
-      }
-    }
+    // 单击只选牌，需要点出牌按钮才出牌
   };
 
   const handlePlay = () => {
@@ -639,25 +616,12 @@ export default function GameTable({
                   // 同点数分组：当前牌与上一张点数不同时，加大间距
                   const prevCard = index > 0 ? myHand[index - 1] : null;
                   const isGroupStart = index > 0 && prevCard && prevCard.rank !== card.rank;
-                  // 单张 hover 即出提示：当未选任何牌时， hover 单张且合法，显示即出提示
-                  const isHovered = hoverCard?.rank === card.rank && hoverCard?.suit === card.suit;
-                  const showInstantTip = isHovered && isMyTurn && !isAIThinking && selectedCards.length === 0 && (() => {
-                    const type = identifyCardType([card], gameState.currentRank);
-                    if (!type) return false;
-                    const play = { type, cards: [card], value: calculatePlayValue([card], type, gameState.currentRank) };
-                    return canPlayCards(play, lastPlay, gameState.currentRank);
-                  })();
                   return (
                     <div
                       key={`${card.rank}-${card.suit}-${index}`}
-                      className={`gt-card${isSelected ? " selected" : ""}${!isMyTurn || isAIThinking ? " disabled" : ""}${isJoker ? (isBig ? " joker-big" : " joker-small") : ""}${isRed ? " red" : ""}${isGroupStart ? " group-start" : ""}${showInstantTip ? " instant-tip" : ""}`}
+                      className={`gt-card${isSelected ? " selected" : ""}${!isMyTurn || isAIThinking ? " disabled" : ""}${isJoker ? (isBig ? " joker-big" : " joker-small") : ""}${isRed ? " red" : ""}${isGroupStart ? " group-start" : ""}`}
                       onClick={() => handleCardClick(card)}
-                      onMouseEnter={() => setHoverCard(card)}
-                      onMouseLeave={() => setHoverCard(null)}
                     >
-                      {showInstantTip && (
-                        <div className="gt-instant-tip">点击出牌</div>
-                      )}
                       {/* 左上角 */}
                       <div className="gt-card-tl">
                         <span className="gt-rank">{getRankDisplay(card.rank)}</span>
@@ -692,7 +656,8 @@ export default function GameTable({
                     <button
                       key={i}
                       className="gt-rec-chip"
-                      onClick={() => playCards(combo)}
+                      title="点击选牌，再点出牌按钮出牌"
+                      onClick={() => setSelectedCards(combo)}
                     >
                       {type ? getCardTypeLabel(type) : ""}
                       <span className="gt-rec-cards">

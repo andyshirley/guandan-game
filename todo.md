@@ -135,3 +135,9 @@
 
 ## Bug 修复
 - [x] 修复单击手牌无法直接出牌的问题：将 selectedCardsRef/isMyTurnRef/isAIThinkingRef/playCardsRef 提前声明，setTimeout 回调改用 playCardsRef.current 避免陈旧闭包
+
+## 交互回退：恢复按钮出牌
+- [x] 移除 handleCardClick 中单击即出的 setTimeout 逻辑
+- [x] 移除 hover 即出 tooltip（gt-instant-tip）和 onMouseEnter/Leave
+- [x] 推荐条 chip 改为点击选牌（setSelectedCards(combo)），而非直接出牌
+- [x] 保留双击全选同点数、键盘快捷键（空格/Enter/P/Esc）功能
