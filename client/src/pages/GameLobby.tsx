@@ -130,7 +130,12 @@ export default function GameLobby() {
             <div className="option-content">
               <h3>游戏历史</h3>
               <p>查看您的游戏记录和统计数据</p>
-              <Button variant="outline" className="history-button" size="lg">
+              <Button
+                variant="outline"
+                className="history-button"
+                size="lg"
+                onClick={() => setLocation("/history")}
+              >
                 查看历史
               </Button>
             </div>

@@ -1,0 +1,252 @@
+.game-history-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a472a 0%, #0f2818 100%);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding: 40px 20px;
+}
+
+.history-container {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.history-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.history-header h1 {
+  font-size: 48px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+.history-header p {
+  font-size: 16px;
+  color: #aaa;
+  margin: 10px 0 0 0;
+}
+
+.login-prompt-card,
+.error-card,
+.empty-card {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 2px solid rgba(255, 215, 0, 0.2) !important;
+  border-radius: 12px !important;
+  padding: 40px !important;
+  text-align: center;
+}
+
+.prompt-content,
+.error-content,
+.empty-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.prompt-content p,
+.error-content p,
+.empty-content p {
+  font-size: 16px;
+  color: #aaa;
+  margin: 0;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 60px 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 2px solid rgba(255, 215, 0, 0.2);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  color: #ffd700;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.game-item {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 2px solid rgba(255, 215, 0, 0.2) !important;
+  border-radius: 12px !important;
+  padding: 20px !important;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.game-item:hover {
+  border-color: rgba(255, 215, 0, 0.5) !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  transform: translateX(5px);
+}
+
+.game-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.game-time {
+  font-size: 14px;
+  color: #aaa;
+}
+
+.game-details {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.status {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status.completed {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+}
+
+.status.playing {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+}
+
+.rank,
+.result {
+  font-size: 13px;
+  color: #ddd;
+}
+
+.rank {
+  color: #ffd700;
+}
+
+.result {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.game-action {
+  display: flex;
+  gap: 10px;
+}
+
+.game-action button {
+  background: transparent !important;
+  color: #fff !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  font-weight: 600 !important;
+  padding: 8px 16px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.game-action button:hover {
+  border-color: #fff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.load-more button {
+  background: transparent !important;
+  color: #fff !important;
+  border: 2px solid rgba(255, 215, 0, 0.3) !important;
+  font-weight: 600 !important;
+  padding: 12px 30px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+}
+
+.load-more button:hover {
+  border-color: #ffd700 !important;
+  background: rgba(255, 215, 0, 0.1) !important;
+}
+
+.history-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.back-button {
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%) !important;
+  color: #000 !important;
+  font-weight: 600 !important;
+  padding: 12px 30px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  cursor: pointer !important;
+}
+
+.back-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(255, 215, 0, 0.3) !important;
+}
+
+@media (max-width: 768px) {
+  .game-history-page {
+    padding: 20px 10px;
+  }
+
+  .history-header h1 {
+    font-size: 36px;
+  }
+
+  .game-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .game-action {
+    width: 100%;
+  }
+
+  .game-action button {
+    flex: 1;
+  }
+}

@@ -7,6 +7,8 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import GameLobby from "./pages/GameLobby";
 import Rules from "./pages/Rules";
+import GameHistory from "./pages/GameHistory";
+import Statistics from "./pages/Statistics";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -15,6 +17,8 @@ function Router() {
       <Route path={"\\"} component={GameLobby} />
       <Route path={"/game"} component={GameLobby} />
       <Route path={"/rules"} component={Rules} />
+      <Route path={"/history"} component={GameHistory} />
+      <Route path={"/statistics"} component={Statistics} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

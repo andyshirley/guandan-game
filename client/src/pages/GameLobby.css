@@ -122,7 +122,8 @@
 }
 
 .rules-button,
-.history-button {
+.history-button,
+.stats-button {
   background: transparent !important;
   color: #fff !important;
   border: 2px solid rgba(255, 255, 255, 0.3) !important;
@@ -134,7 +135,8 @@
 }
 
 .rules-button:hover,
-.history-button:hover {
+.history-button:hover,
+.stats-button:hover {
   border-color: #fff !important;
   background: rgba(255, 255, 255, 0.1) !important;
 }
