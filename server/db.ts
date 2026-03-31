@@ -155,7 +155,7 @@ export async function addGameRound(
     playerPosition,
     cardsPlayed,
     cardType,
-    isPassed,
+    isPassed: isPassed ? 1 : 0,
   });
 }
 

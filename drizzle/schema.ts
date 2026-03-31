@@ -1,4 +1,4 @@
-import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, tinyint, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -67,7 +67,7 @@ export const gameRounds = mysqlTable("gameRounds", {
   /** 牌型 (single, pair, triple, bomb, etc.) */
   cardType: varchar("cardType", { length: 32 }),
   /** 是否是"不要" */
-  isPassed: boolean("isPassed").notNull().default(false),
+  isPassed: tinyint("isPassed").notNull().default(0),
   /** 回合开始时间 */
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });

@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `gameRounds` MODIFY COLUMN `isPassed` tinyint NOT NULL DEFAULT 0;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3bUSjW26tkASHv7.root --database 5vRopkcYUmh6aQLFHu5Wkv --execute ALTER TABLE `gameRounds` MODIFY COLUMN `isPassed` tinyint NOT NULL DEFAULT 0;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 103
+}
