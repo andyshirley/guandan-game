@@ -15,8 +15,10 @@ import {
   Bot,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Clock,
   Crown,
+  Filter,
   Flame,
   History,
   RefreshCw,
@@ -26,6 +28,7 @@ import {
   Users,
   X,
   Zap,
+  Zap as BombIcon,
 } from "lucide-react";
 import "./GameTable.css";
 
@@ -89,6 +92,8 @@ export default function GameTable({
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [playHistory, setPlayHistory] = useState<PlayRecord[]>([]);
+  const [historyFilter, setHistoryFilter] = useState<number | "all">("all"); // "all" or PlayerPosition
+  const [collapsedRounds, setCollapsedRounds] = useState<Set<number>>(new Set());
   const historyEndRef = useRef<HTMLDivElement>(null);
   const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -519,6 +524,7 @@ export default function GameTable({
 
         {/* ===== 牌谱侧边栏 ===== */}
         <aside className={`gt-history-panel ${showHistory ? "open" : ""}`}>
+          {/* 头部 */}
           <div className="gt-history-header">
             <div className="gt-history-title">
               <History size={15} />
@@ -530,46 +536,148 @@ export default function GameTable({
             </button>
           </div>
 
+          {/* 玩家筛选 Tab */}
+          <div className="gt-history-tabs">
+            {([
+              { key: "all", label: "全部" },
+              { key: PlayerPosition.Player0, label: "我" },
+              { key: PlayerPosition.Player2, label: "北" },
+              { key: PlayerPosition.Player1, label: "东" },
+              { key: PlayerPosition.Player3, label: "西" },
+            ] as { key: number | "all"; label: string }[]).map(tab => (
+              <button
+                key={String(tab.key)}
+                className={`gt-history-tab${historyFilter === tab.key ? " active" : ""}`}
+                onClick={() => setHistoryFilter(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* 内容区 */}
           <div className="gt-history-body">
             {playHistory.length === 0 ? (
               <div className="gt-history-empty">
                 <Clock size={22} />
                 <span>暂无记录</span>
               </div>
-            ) : (
-              <div className="gt-history-list">
-                {playHistory.map((record, i) => (
-                  <div
-                    key={i}
-                    className={`gt-history-item${record.isPassed ? " passed" : ""}${record.playerPos === PlayerPosition.Player0 ? " mine" : ""}`}
-                  >
-                    <div className="gt-history-meta">
-                      <span className={`gt-history-dot ${record.playerPos === PlayerPosition.Player0 ? "mine" : record.playerPos === PlayerPosition.Player2 ? "ally" : "enemy"}`} />
-                      <span className="gt-history-who">{record.player}</span>
-                      <span className="gt-history-type">{record.cardType}</span>
-                      <span className="gt-history-round">R{record.round}</span>
-                    </div>
-                    {!record.isPassed && record.cards.length > 0 && (
-                      <div className="gt-history-cards">
-                        {record.cards.map((c, ci) => {
-                          const isRed = c.suit === "hearts" || c.suit === "diamonds";
-                          const isJoker = c.rank === "joker_small" || c.rank === "joker_big";
-                          return (
-                            <span
-                              key={ci}
-                              className={`gt-history-card${isRed || (isJoker && c.rank === "joker_big") ? " red" : ""}`}
-                            >
-                              {getRankDisplay(c.rank)}{!isJoker ? SUIT_SYMBOLS[c.suit] || "" : ""}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
+            ) : (() => {
+              // 按玩家筛选
+              const filtered = historyFilter === "all"
+                ? playHistory
+                : playHistory.filter(r => r.playerPos === historyFilter);
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="gt-history-empty">
+                    <Filter size={18} />
+                    <span>该玩家暂无出牌</span>
                   </div>
-                ))}
-                <div ref={historyEndRef} />
-              </div>
-            )}
+                );
+              }
+
+              // 按回合分组
+              const groups: Map<number, PlayRecord[]> = new Map();
+              filtered.forEach(r => {
+                if (!groups.has(r.round)) groups.set(r.round, []);
+                groups.get(r.round)!.push(r);
+              });
+              const roundNums = Array.from(groups.keys()).sort((a, b) => b - a); // 最新回合在前
+
+              return (
+                <div className="gt-history-list">
+                  {roundNums.map(roundNum => {
+                    const records = groups.get(roundNum)!;
+                    const isCollapsed = collapsedRounds.has(roundNum);
+                    const hasBomb = records.some(r => r.cardType === "炸弹" || r.cardType === "王炸");
+                    return (
+                      <div key={roundNum} className="gt-round-group">
+                        {/* 回合标题行 */}
+                        <button
+                          className={`gt-round-header${hasBomb ? " has-bomb" : ""}`}
+                          onClick={() => setCollapsedRounds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(roundNum)) next.delete(roundNum);
+                            else next.add(roundNum);
+                            return next;
+                          })}
+                        >
+                          <span className="gt-round-label">
+                            {hasBomb && <Flame size={11} className="gt-round-bomb" />}
+                            第 {roundNum} 轮
+                          </span>
+                          <span className="gt-round-meta">{records.length} 手</span>
+                          <ChevronDown
+                            size={13}
+                            className={`gt-round-chevron${isCollapsed ? " collapsed" : ""}`}
+                          />
+                        </button>
+
+                        {/* 回合内记录 */}
+                        {!isCollapsed && (
+                          <div className="gt-round-records">
+                            {records.map((record, i) => {
+                              const isMine = record.playerPos === PlayerPosition.Player0;
+                              const isAlly = record.playerPos === PlayerPosition.Player2;
+                              const isBomb = record.cardType === "炸弹" || record.cardType === "王炸";
+                              return (
+                                <div
+                                  key={i}
+                                  className={`gt-history-item${
+                                    record.isPassed ? " passed" : ""
+                                  }${isMine ? " mine" : ""}${isBomb ? " bomb" : ""}`}
+                                >
+                                  {/* 玩家标识 + 牌型标签 */}
+                                  <div className="gt-history-meta">
+                                    <span className={`gt-history-dot ${
+                                      isMine ? "mine" : isAlly ? "ally" : "enemy"
+                                    }`} />
+                                    <span className="gt-history-who">{record.player}</span>
+                                    {record.isPassed ? (
+                                      <span className="gt-type-badge pass">不要</span>
+                                    ) : isBomb ? (
+                                      <span className="gt-type-badge bomb">
+                                        <Flame size={9} />{record.cardType}
+                                      </span>
+                                    ) : record.cardType ? (
+                                      <span className="gt-type-badge">{record.cardType}</span>
+                                    ) : null}
+                                  </div>
+                                  {/* 迷你牌面 */}
+                                  {!record.isPassed && record.cards.length > 0 && (
+                                    <div className="gt-history-cards">
+                                      {record.cards.map((c, ci) => {
+                                        const isRed = c.suit === "hearts" || c.suit === "diamonds";
+                                        const isJoker = c.rank === "joker_small" || c.rank === "joker_big";
+                                        return (
+                                          <span
+                                            key={ci}
+                                            className={`gt-history-card${
+                                              isRed || (isJoker && c.rank === "joker_big") ? " red" : ""
+                                            }${isJoker ? " joker" : ""}`}
+                                          >
+                                            {getRankDisplay(c.rank)}
+                                            {!isJoker ? (
+                                              <sub className="gt-card-suit-sub">{SUIT_SYMBOLS[c.suit] || ""}</sub>
+                                            ) : null}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <div ref={historyEndRef} />
+                </div>
+              );
+            })()}
           </div>
         </aside>
       </div>

@@ -722,21 +722,114 @@
   font-size: 11px;
 }
 
-.gt-history-list { display: flex; flex-direction: column; gap: 4px; }
+/* ---- 玩家筛选 Tab ---- */
+.gt-history-tabs {
+  display: flex;
+  gap: 3px;
+  padding: 7px 8px 6px;
+  border-bottom: 1px solid rgba(212,175,55,0.1);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.gt-history-tabs::-webkit-scrollbar { display: none; }
+.gt-history-tab {
+  flex: 1;
+  min-width: 32px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(200,191,168,0.45);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.gt-history-tab:hover { background: rgba(255,255,255,0.05); color: #c8bfa8; }
+.gt-history-tab.active {
+  background: rgba(212,175,55,0.14);
+  border-color: rgba(212,175,55,0.3);
+  color: #d4af37;
+}
 
+/* ---- 回合分组 ---- */
+.gt-history-list { display: flex; flex-direction: column; gap: 6px; }
+
+.gt-round-group {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.gt-round-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  background: rgba(255,255,255,0.04);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-align: left;
+}
+.gt-round-header:hover { background: rgba(255,255,255,0.07); }
+.gt-round-header.has-bomb { background: rgba(212,175,55,0.07); }
+.gt-round-header.has-bomb:hover { background: rgba(212,175,55,0.12); }
+
+.gt-round-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(200,191,168,0.7);
+  flex: 1;
+}
+.gt-round-header.has-bomb .gt-round-label { color: #d4af37; }
+.gt-round-bomb { color: #f59e0b; flex-shrink: 0; }
+
+.gt-round-meta {
+  font-size: 10px;
+  color: rgba(200,191,168,0.3);
+  flex-shrink: 0;
+}
+
+.gt-round-chevron {
+  color: rgba(200,191,168,0.35);
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+.gt-round-chevron.collapsed { transform: rotate(-90deg); }
+
+.gt-round-records {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 4px 4px;
+  background: rgba(0,0,0,0.15);
+}
+
+/* ---- 单条记录 ---- */
 .gt-history-item {
-  padding: 7px 9px;
-  border-radius: 7px;
-  background: rgba(255,255,255,0.035);
-  border: 1px solid rgba(255,255,255,0.05);
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid transparent;
   transition: background 0.15s;
 }
-.gt-history-item:hover { background: rgba(255,255,255,0.055); }
+.gt-history-item:hover { background: rgba(255,255,255,0.05); }
 .gt-history-item.mine {
-  background: rgba(212,175,55,0.055);
-  border-color: rgba(212,175,55,0.11);
+  background: rgba(212,175,55,0.05);
+  border-color: rgba(212,175,55,0.1);
 }
-.gt-history-item.passed { opacity: 0.45; }
+.gt-history-item.passed { opacity: 0.4; }
+.gt-history-item.bomb {
+  background: rgba(245,158,11,0.07);
+  border-color: rgba(245,158,11,0.2);
+}
 
 .gt-history-meta {
   display: flex;
@@ -754,27 +847,58 @@
 .gt-history-dot.enemy { background: #f87171; }
 
 .gt-history-who { font-size: 11px; font-weight: 600; color: #c8bfa8; }
-.gt-history-type {
-  flex: 1;
-  font-size: 10px;
-  color: rgba(200,191,168,0.5);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.gt-history-round { font-size: 9px; color: rgba(200,191,168,0.28); flex-shrink: 0; }
 
+/* ---- 牌型标签 ---- */
+.gt-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  background: rgba(255,255,255,0.07);
+  color: rgba(200,191,168,0.55);
+  border: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.gt-type-badge.pass {
+  background: transparent;
+  color: rgba(200,191,168,0.3);
+  border-color: transparent;
+  font-style: italic;
+}
+.gt-type-badge.bomb {
+  background: rgba(245,158,11,0.12);
+  color: #f59e0b;
+  border-color: rgba(245,158,11,0.25);
+}
+
+/* ---- 迷你牌面 ---- */
 .gt-history-cards { display: flex; flex-wrap: wrap; gap: 3px; }
 .gt-history-card {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
-  background: rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.08);
   color: #c8bfa8;
   white-space: nowrap;
+  line-height: 1.4;
 }
 .gt-history-card.red { color: #f87171; }
+.gt-history-card.joker {
+  background: rgba(212,175,55,0.12);
+  color: #d4af37;
+  border: 1px solid rgba(212,175,55,0.2);
+}
+.gt-card-suit-sub {
+  font-size: 7px;
+  vertical-align: baseline;
+  opacity: 0.75;
+  margin-left: 1px;
+}
 
 /* ---- Mini 牌（出牌区） ---- */
 .gt-mini-card {
