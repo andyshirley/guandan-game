@@ -128,6 +128,10 @@ export function calculatePlayValue(cards: Card[], type: CardType, currentRank: R
     [CardType.Bomb]: 1000000000000,
     [CardType.RoyalBomb]: 10000000000000,
   };
+  // 炸弹：张数越多越大（5 张 > 4 张），同张数再比点数
+  if (type === CardType.Bomb) {
+    return cards.length * multipliers[CardType.Bomb] + baseValue;
+  }
   return baseValue * multipliers[type];
 }
 
@@ -372,18 +376,21 @@ export function findPlayableCombinations(
     results.push(jokers);
   }
 
-  // 炸弹
+  // 炸弹：推荐所有可能的炸弹张数（4、5、...N 张）
   const groups = groupCardsByRank(hand);
-  for (const [rank, cards] of Object.entries(groups)) {
+  for (const [, cards] of Object.entries(groups)) {
     if (cards.length >= 4) {
-      const bomb = cards.slice(0, 4);
-      const play: CardPlay = {
-        type: CardType.Bomb,
-        cards: bomb,
-        value: calculatePlayValue(bomb, CardType.Bomb, currentRank),
-      };
-      if (canPlayCards(play, lastPlay, currentRank)) {
-        results.push(bomb);
+      // 从 4 张到全部，每种张数都推荐
+      for (let bombSize = 4; bombSize <= cards.length; bombSize++) {
+        const bomb = cards.slice(0, bombSize);
+        const play: CardPlay = {
+          type: CardType.Bomb,
+          cards: bomb,
+          value: calculatePlayValue(bomb, CardType.Bomb, currentRank),
+        };
+        if (canPlayCards(play, lastPlay, currentRank)) {
+          results.push(bomb);
+        }
       }
     }
   }

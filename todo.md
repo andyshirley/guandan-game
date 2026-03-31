@@ -141,3 +141,8 @@
 - [x] 移除 hover 即出 tooltip（gt-instant-tip）和 onMouseEnter/Leave
 - [x] 推荐条 chip 改为点击选牌（setSelectedCards(combo)），而非直接出牌
 - [x] 保留双击全选同点数、键盘快捷键（空格/Enter/P/Esc）功能
+
+## Bug 修复：5 张同点数炸弹
+- [x] identifyCardType 已支持识别 5 张及以上同点数为炸弹（isBomb 判断 >= 4 张全同点数）
+- [x] findPlayableCombinations 推荐条包含 4、5、...N 张所有炸弹张数组合
+- [x] calculatePlayValue 炸弹价値改为：张数×基数 + 点数，5 张必大于 4 张炸弹
