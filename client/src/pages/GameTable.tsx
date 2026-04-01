@@ -10,6 +10,8 @@ import {
   sortCards,
   findPlayableCombinations,
   groupCardsByRank,
+  getCardReportStatus,
+  isHeartRank,
 } from "@/lib/gameEngine";
 import {
   danzeroGetAIMove,
@@ -612,6 +614,22 @@ export default function GameTable({
 
           {/* ===== 玩家区域（南家） ===== */}
           <div className="gt-player-zone">
+            {/* 报牌提示 */}
+            {(() => {
+              const reportStatus = getCardReportStatus(myHand);
+              if (reportStatus === 'must') return (
+                <div className="gt-report-toast must">
+                  <span>⚠️ 报牌！手牌剩 {myHand.length} 张，必须主动报牌</span>
+                </div>
+              );
+              if (reportStatus === 'if_asked') return (
+                <div className="gt-report-toast if-asked">
+                  <span>手牌剩 {myHand.length} 张，有问必报</span>
+                </div>
+              );
+              return null;
+            })()}
+
             {/* 错误提示 */}
             {errorMsg && (
               <div className="gt-error-toast">
@@ -638,13 +656,14 @@ export default function GameTable({
                   const isJoker = card.rank === "joker_small" || card.rank === "joker_big";
                   const isBig = card.rank === "joker_big";
                   const isRed = card.suit === "hearts" || card.suit === "diamonds";
+                  const isHeartRankCard = isHeartRank(card, gameState.currentRank); // 红心参谋（逢人配）
                   // 同点数分组：当前牌与上一张点数不同时，加大间距
                   const prevCard = index > 0 ? myHand[index - 1] : null;
                   const isGroupStart = index > 0 && prevCard && prevCard.rank !== card.rank;
                   return (
                     <div
                       key={`${card.rank}-${card.suit}-${index}`}
-                      className={`gt-card${isSelected ? " selected" : ""}${!isMyTurn || isAIThinking ? " disabled" : ""}${isJoker ? (isBig ? " joker-big" : " joker-small") : ""}${isRed ? " red" : ""}${isGroupStart ? " group-start" : ""}`}
+                      className={`gt-card${isSelected ? " selected" : ""}${!isMyTurn || isAIThinking ? " disabled" : ""}${isJoker ? (isBig ? " joker-big" : " joker-small") : ""}${isRed ? " red" : ""}${isGroupStart ? " group-start" : ""}${isHeartRankCard ? " heart-rank" : ""}`}
                       onClick={() => handleCardClick(card)}
                     >
                       {/* 左上角 */}
@@ -659,6 +678,7 @@ export default function GameTable({
                         ) : (
                           <span className="gt-suit-lg">{SUIT_SYMBOLS[card.suit]}</span>
                         )}
+                        {isHeartRankCard && <span className="gt-heart-rank-badge">配</span>}
                       </div>
                       {/* 右下角（倒置） */}
                       <div className="gt-card-br">

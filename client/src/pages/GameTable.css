@@ -440,6 +440,35 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* 报牌提示 */
+.gt-report-toast {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 6px;
+  animation: gt-slide-in 0.2s ease;
+  letter-spacing: 0.02em;
+}
+.gt-report-toast.must {
+  background: rgba(251,191,36,0.18);
+  border: 1px solid rgba(251,191,36,0.45);
+  color: #fbbf24;
+  animation: gt-slide-in 0.2s ease, gt-pulse-border 1.5s ease-in-out infinite;
+}
+.gt-report-toast.if-asked {
+  background: rgba(99,179,237,0.12);
+  border: 1px solid rgba(99,179,237,0.28);
+  color: #63b3ed;
+}
+@keyframes gt-pulse-border {
+  0%, 100% { border-color: rgba(251,191,36,0.45); }
+  50% { border-color: rgba(251,191,36,0.9); box-shadow: 0 0 8px rgba(251,191,36,0.3); }
+}
+
 /* 牌型提示 */
 .gt-hint {
   display: flex;
@@ -540,6 +569,40 @@
   pointer-events: none;
 }
 .gt-card.red { color: #c0392b; }
+
+/* 红心参谋（逢人配）特殊样式 */
+.gt-card.heart-rank {
+  background: linear-gradient(160deg, #fff 0%, #fff0f5 100%);
+  border-color: rgba(236,72,153,0.4);
+  border-width: 2px;
+  box-shadow:
+    0 3px 10px rgba(0,0,0,0.45),
+    0 0 0 1px rgba(236,72,153,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.95);
+}
+.gt-card.heart-rank.selected {
+  box-shadow:
+    0 16px 32px rgba(236,72,153,0.5),
+    0 4px 12px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.95);
+  border-color: #ec4899;
+}
+
+/* 逢人配徽章 */
+.gt-heart-rank-badge {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 8px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #ec4899, #be185d);
+  border-radius: 4px;
+  padding: 1px 3px;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  z-index: 2;
+}
 .gt-card.joker-small {
   background: linear-gradient(160deg, #fff 0%, #e8faf0 100%);
   color: #1a7a3a;

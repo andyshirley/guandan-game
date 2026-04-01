@@ -118,6 +118,8 @@ export interface GameRound {
     play: CardPlay | null; // null 表示"不要"
   }>;
   tribute: TributeInfo[]; // 本轮的贡牌信息
+  borrowWindTriggered: boolean; // 是否已经触发借风（用于不重置 passCount）
+  flippedCard: Card | null; // 第一副牌翻牌的结果（用于决定先手）
 }
 
 /** 游戏状态 */

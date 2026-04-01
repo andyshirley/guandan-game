@@ -179,3 +179,26 @@
 ## 官方规则对标与修正（优先级 P3 - 规范性完善）
 - [x] 强化出牌方式规范（一次性出完、顺序规范、位置规范）
 - [x] 验证升级与级数规则（升级数计算、过A处理）
+
+
+## 官方规则完全修复（P0-P2 优先级）
+
+### P0 阻塞性修复
+- [x] 集成红心参谋到 identifyCardType/canPlayCards/findPlayableCombinations 主路径
+- [x] 修复借风出牌的 passCount 重置决突（添加 borrowWindTriggered 标志）
+- [x] 实现贡牌还牌的完整流程函数（initiateTributePhase/executeSingleTribute/executeSingleReturn）
+- [x] 红心参谋在手牌中显示特殊标识（逢人配徽章）
+- [ ] 在 GameTable 中实现贡牌还牌完整 UI 流程（待贡玩家提示、可选牌列表、提交操作）
+
+### P1 核心功能
+- [x] 实现翻牌定先手机制（GameRound.flippedCard + flipCardForStarter）
+- [x] 实现报牌 UI 提示（手牌≤6张黄色警告，≤10张蓝色提示）
+- [x] 报牌提示动画（必报时脸色闪烁动画）
+
+### P2 规范性
+- [x] 强制出牌验证：在 executePlay 中验证玩家是否拥有这些牌
+- [x] 红心参谋标识：手牌中显示红心参谋的特殊标识（逢人配徽章）
+
+### 测试与验证
+- [x] 运行完整测试套件，81 个测试全部通过
+- [x] TypeScript 零错误

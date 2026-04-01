@@ -245,6 +245,34 @@ export function identifyCardType(cards: Card[], currentRank: Rank): CardType | n
   if (cards.length === 0) return null;
   if (isRoyalBomb(cards)) return CardType.RoyalBomb;
   if (isBomb(cards)) return CardType.Bomb;
+  
+  // 红心参谋支持：将红心参谋替换为其他点数后再进行牌型识别
+  // 这样可以识别出红心参谋配成的各种牌型
+  const heartRankCount = getHeartRankCount(cards, currentRank);
+  if (heartRankCount > 0 && heartRankCount < cards.length) {
+    // 有红心参谋但不是全红心参谋，需要尝试不同的配置
+    // 获取非红心参谋牌的点数，尝试将红心参谋配成这些点数
+    const nonHeartCards = cards.filter(c => !isHeartRank(c, currentRank));
+    const possibleRanks = new Set(nonHeartCards.map(c => c.rank));
+    
+    for (const rank of Array.from(possibleRanks)) {
+      const configuredCards = replaceHeartRankWithRank(cards, rank, currentRank);
+      // 尝试识别配置后的牌型
+      if (isStraightFlush(configuredCards, currentRank)) return CardType.StraightFlush;
+      if (isTripleSequence(configuredCards, currentRank)) return CardType.TripleSequence;
+      if (isPairSequence(configuredCards, currentRank)) return CardType.PairSequence;
+      if (isSequence(configuredCards, currentRank)) return CardType.Sequence;
+      if (isFullHouse(configuredCards)) return CardType.FullHouse;
+      
+      const groups = groupCardsByRank(configuredCards);
+      const groupCount = Object.keys(groups).length;
+      if (configuredCards.length === 3 && groupCount === 1) return CardType.Triple;
+      if (configuredCards.length === 2 && groupCount === 1) return CardType.Pair;
+      if (configuredCards.length === 1) return CardType.Single;
+    }
+    return null;
+  }
+  
   // 同花顺优先于普通顺子判断
   if (isStraightFlush(cards, currentRank)) return CardType.StraightFlush;
   if (isTripleSequence(cards, currentRank)) return CardType.TripleSequence;
@@ -416,6 +444,8 @@ export function createInitialGameState(
       passCount: 0,
       plays: [],
       tribute: [],
+      borrowWindTriggered: false,
+      flippedCard: null,
     },
     gameHistory: [],
     winningTeam: null,
@@ -441,6 +471,15 @@ export function executePlay(
   }
 
   const player = gameState.players[playerPos];
+
+  // 检查玩家是否拥有这些牌
+  for (const card of cards) {
+    const hasCard = player.hand.some(c => c.rank === card.rank && c.suit === card.suit);
+    if (!hasCard) {
+      return { success: false, error: "手中没有该牌" };
+    }
+  }
+
   const cardType = identifyCardType(cards, gameState.currentRank);
 
   if (!cardType) {
@@ -466,6 +505,7 @@ export function executePlay(
   newState.currentRound.lastPlay = play;
   newState.currentRound.lastPlayer = playerPos;
   newState.currentRound.passCount = 0;
+  newState.currentRound.borrowWindTriggered = false; // 出牌后重置借风标志
   newState.currentRound.plays.push({ player: playerPos, play });
 
   // 检查游戏是否结束
@@ -500,13 +540,23 @@ export function executePass(
   newState.currentRound.passCount++;
   newState.currentRound.plays.push({ player: playerPos, play: null });
 
-  // 3个玩家都不要，清空出牌记录，上一个出牌的玩家重新开始
+  // 3个玩家都不要，检查是否触发借风或清空出牌记录
   if (newState.currentRound.passCount >= 3) {
     const lastPlayer = newState.currentRound.lastPlayer!;
-    newState.currentRound.lastPlay = null;
-    newState.currentRound.lastPlayer = null;
-    newState.currentRound.passCount = 0;
-    newState.currentRound.currentPlayer = lastPlayer;
+    
+    // 检查是否可以借风（上游已出完最后一手牌）
+    if (canBorrowWind(newState, getTeammate(lastPlayer))) {
+      // 触发借风，不重置 passCount，改变 borrowWindTriggered 标志
+      newState.currentRound.borrowWindTriggered = true;
+      newState.currentRound.currentPlayer = getTeammate(lastPlayer);
+    } else {
+      // 不能借风，清空出牌记录，上一个出牌的玩家重新开始
+      newState.currentRound.lastPlay = null;
+      newState.currentRound.lastPlayer = null;
+      newState.currentRound.passCount = 0;
+      newState.currentRound.borrowWindTriggered = false;
+      newState.currentRound.currentPlayer = lastPlayer;
+    }
   } else {
     newState.currentRound.currentPlayer = getNextPlayer(playerPos);
   }
@@ -1166,6 +1216,8 @@ export function startNewRound(
     passCount: 0,
     plays: [],
     tribute: [],
+    borrowWindTriggered: false,
+    flippedCard: null,
   };
   
   newState.status = GameStatus.Playing;
@@ -1295,4 +1347,191 @@ export function getFinalWinner(gameState: GameStateData): Team | null {
   }
   
   return null;
+}
+
+
+// ===== 贡牌还牌流程集成 =====
+
+/**
+ * 获取本局的贡牌者（下游玩家）
+ * 规则：上一局的下游者需要进贡
+ */
+export function getTributePlayers(
+  gameState: GameStateData,
+  winningTeam: Team
+): PlayerPosition[] {
+  // 获胜队伍的下游是失败队伍的玩家
+  // 简化处理：失败队伍的所有玩家都需要进贡
+  const losers: PlayerPosition[] = [];
+  for (let i = 0; i < 4; i++) {
+    if (getTeam(i as PlayerPosition) !== winningTeam) {
+      losers.push(i as PlayerPosition);
+    }
+  }
+  return losers;
+}
+
+/**
+ * 初始化贡牌流程
+ * 在游戏结束后调用，准备进贡
+ */
+export function initiateTributePhase(
+  gameState: GameStateData,
+  winningTeam: Team
+): GameStateData {
+  const newState = deepCloneGameState(gameState);
+  const tributePlayers = getTributePlayers(gameState, winningTeam);
+  
+  // 清空旧的贡牌信息
+  newState.currentRound.tribute = [];
+  
+  // 为每个下游玩家创建贡牌信息
+  for (const tributePlayer of tributePlayers) {
+    const teammate = getTeammate(tributePlayer);
+    newState.currentRound.tribute.push({
+      fromPlayer: tributePlayer,
+      toPlayer: teammate,
+      tributeCard: null,
+      returnCard: null,
+      isCompleted: false,
+    });
+  }
+  
+  return newState;
+}
+
+/**
+ * 执行单个玩家的进贡
+ */
+export function executeSingleTribute(
+  gameState: GameStateData,
+  tributePlayer: PlayerPosition,
+  tributeCard: Card
+): { success: boolean; error?: string; newState?: GameStateData } {
+  const player = gameState.players[tributePlayer];
+  
+  // 检查玩家是否持有该牌
+  const hasCard = player.hand.some(c => c.rank === tributeCard.rank && c.suit === tributeCard.suit);
+  if (!hasCard) {
+    return { success: false, error: "玩家没有该牌" };
+  }
+  
+  // 检查是否是最大的牌（红心参谋除外）
+  const maxCard = getMaxTributeCard(player.hand, gameState.currentRank);
+  if (!maxCard || getRankValue(tributeCard.rank, gameState.currentRank) !== getRankValue(maxCard.rank, gameState.currentRank)) {
+    return { success: false, error: "必须进贡最大的牌" };
+  }
+  
+  const newState = deepCloneGameState(gameState);
+  
+  // 移除贡牌
+  const newHand = removeCardsFromHand(newState.players[tributePlayer].hand, [tributeCard]);
+  newState.players[tributePlayer].hand = newHand;
+  newState.players[tributePlayer].cardsRemaining = newHand.length;
+  
+  // 更新贡牌信息
+  const tributeInfo = newState.currentRound.tribute.find(t => t.fromPlayer === tributePlayer);
+  if (tributeInfo) {
+    tributeInfo.tributeCard = tributeCard;
+  }
+  
+  return { success: true, newState };
+}
+
+/**
+ * 执行单个玩家的还牌
+ */
+export function executeSingleReturn(
+  gameState: GameStateData,
+  returnPlayer: PlayerPosition,
+  returnCard: Card,
+  tributePlayer: PlayerPosition
+): { success: boolean; error?: string; newState?: GameStateData } {
+  const player = gameState.players[returnPlayer];
+  
+  // 检查玩家是否持有该牌
+  const hasCard = player.hand.some(c => c.rank === returnCard.rank && c.suit === returnCard.suit);
+  if (!hasCard) {
+    return { success: false, error: "玩家没有该牌" };
+  }
+  
+  // 检查还牌限制
+  const validCards = getValidReturnCards(player.hand, returnPlayer, tributePlayer, gameState.currentRank);
+  const isValid = validCards.some(c => c.rank === returnCard.rank && c.suit === returnCard.suit);
+  if (!isValid) {
+    return { success: false, error: "还牌不符合规则" };
+  }
+  
+  const newState = deepCloneGameState(gameState);
+  
+  // 移除还牌
+  const newHand = removeCardsFromHand(newState.players[returnPlayer].hand, [returnCard]);
+  newState.players[returnPlayer].hand = newHand;
+  newState.players[returnPlayer].cardsRemaining = newHand.length;
+  
+  // 添加还回的牌到进贡者手中
+  newState.players[tributePlayer].hand.push(returnCard);
+  newState.players[tributePlayer].cardsRemaining++;
+  
+  // 更新贡牌信息
+  const tributeInfo = newState.currentRound.tribute.find(t => t.fromPlayer === tributePlayer);
+  if (tributeInfo) {
+    tributeInfo.returnCard = returnCard;
+    tributeInfo.isCompleted = true;
+  }
+  
+  return { success: true, newState };
+}
+
+
+/**
+ * 检查所有贡牌是否已完成
+ */
+export function allTributesCompleted(gameState: GameStateData): boolean {
+  return gameState.currentRound.tribute.length > 0 && 
+         gameState.currentRound.tribute.every(t => t.isCompleted);
+}
+
+/**
+ * 获取待进贡的玩家
+ */
+export function getPendingTributePlayer(gameState: GameStateData): PlayerPosition | null {
+  const pending = gameState.currentRound.tribute.find(t => t.tributeCard === null);
+  return pending ? pending.fromPlayer : null;
+}
+
+/**
+ * 获取待还牌的玩家
+ */
+export function getPendingReturnPlayer(gameState: GameStateData): PlayerPosition | null {
+  const pending = gameState.currentRound.tribute.find(t => t.tributeCard !== null && !t.isCompleted);
+  return pending ? pending.toPlayer : null;
+}
+
+
+// ===== 翻牌定先手 =====
+
+/**
+ * 翻牌决定先手
+ * 规则：第一副牌翻牌决定先手，根据翻出牌的点数决定
+ */
+export function flipCardForStarter(
+  gameState: GameStateData,
+  flippedCard: Card
+): { starter: PlayerPosition; flippedCard: Card } {
+  // 根据翻出的牌的点数决定先手
+  // 简化处理：按点数从小到大循环分配先手
+  const rankIndex = RANK_ORDER.indexOf(flippedCard.rank);
+  const starter = (rankIndex % 4) as PlayerPosition;
+  
+  return { starter, flippedCard };
+}
+
+/**
+ * 获取翻牌的中文描述
+ */
+export function getFlippedCardDescription(card: Card): string {
+  const rankDisplay = getRankDisplay(card.rank);
+  const suitSymbol = getSuitSymbol(card.suit);
+  return `${suitSymbol}${rankDisplay}`;
 }
