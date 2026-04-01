@@ -121,6 +121,12 @@ export default function GameTable({
   // playCardsRef 在 playCards 定义后立即更新
   const playCardsRef = useRef<(cards: Card[]) => boolean>(() => false);
 
+  // Safety check: ensure gameState and currentRound are defined
+  if (!gameState || !gameState.currentRound) {
+    console.error("GameTable: Invalid gameState", gameState);
+    return null;
+  }
+
   const currentPlayer = gameState.currentRound.currentPlayer;
   const isMyTurn = currentPlayer === PlayerPosition.Player0;
   const myHand = sortCards(gameState.players[PlayerPosition.Player0].hand, gameState.currentRank);
@@ -234,6 +240,12 @@ export default function GameTable({
 
       setIsAIThinking(false);
       setGameState(newState);
+
+      // Safety check: ensure currentRound exists before accessing
+      if (!newState.currentRound) {
+        console.error("runAITurn: newState.currentRound is undefined", newState);
+        return;
+      }
 
       if (newState.status !== GameStatus.Finished && newState.currentRound.currentPlayer !== PlayerPosition.Player0) {
         runAITurn(newState);

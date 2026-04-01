@@ -39,9 +39,14 @@ export default function GameLobby() {
   const saveGameMutation = trpc.game.finishGame.useMutation();
 
   const handleStartGame = () => {
+    // 如果未登录且配置了 OAuth，则跳转登录
     if (!isAuthenticated) {
-      window.location.href = getLoginUrl();
-      return;
+      const loginUrl = getLoginUrl();
+      if (loginUrl) {
+        window.location.href = loginUrl;
+        return;
+      }
+      // OAuth 未配置，允许访客模式，继续执行游戏启动
     }
     setIsStarting(true);
     setTimeout(() => {
@@ -222,10 +227,14 @@ export default function GameLobby() {
                 <LogOut size={14} />
               </button>
             </div>
-          ) : (
-            <a href={getLoginUrl()} className="nav-login-btn">
+          ) : getLoginUrl() ? (
+            <a href={getLoginUrl()!} className="nav-login-btn">
               <User size={14} />登录
             </a>
+          ) : (
+            <div className="nav-user">
+              <span className="nav-username" style={{ opacity: 0.7 }}>访客模式</span>
+            </div>
           )}
         </div>
       </nav>
@@ -252,10 +261,22 @@ export default function GameLobby() {
                 <><Play size={18} />开始游戏</>
               )}
             </button>
-          ) : (
-            <a href={getLoginUrl()} className="lobby-btn-primary hero-cta">
+          ) : getLoginUrl() ? (
+            <a href={getLoginUrl()!} className="lobby-btn-primary hero-cta">
               <User size={18} />登录开始游戏
             </a>
+          ) : (
+            <button
+              className="lobby-btn-primary hero-cta"
+              onClick={handleStartGame}
+              disabled={isStarting}
+            >
+              {isStarting ? (
+                <><Zap size={18} className="spin-icon" />发牌中...</>
+              ) : (
+                <><Play size={18} />访客模式游戏</>
+              )}
+            </button>
           )}
         </div>
 
