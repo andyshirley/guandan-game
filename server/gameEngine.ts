@@ -309,6 +309,7 @@ export function createGame(players: Player[], currentRank: Rank = Rank.Three): G
     },
     gameHistory: [],
     winningTeam: null,
+    finishOrder: [],
     startedAt: new Date(),
     endedAt: null,
   };

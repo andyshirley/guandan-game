@@ -188,7 +188,7 @@
 - [x] 修复借风出牌的 passCount 重置决突（添加 borrowWindTriggered 标志）
 - [x] 实现贡牌还牌的完整流程函数（initiateTributePhase/executeSingleTribute/executeSingleReturn）
 - [x] 红心参谋在手牌中显示特殊标识（逢人配徽章）
-- [ ] 在 GameTable 中实现贡牌还牌完整 UI 流程（待贡玩家提示、可选牌列表、提交操作）
+- [x] 在 GameTable 中实现贡牌还牌完整 UI 流程（待贡玩家提示、可选牌列表、提交操作、AI 自动处理）
 
 ### P1 核心功能
 - [x] 实现翻牌定先手机制（GameRound.flippedCard + flipCardForStarter）

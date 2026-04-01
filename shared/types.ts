@@ -131,6 +131,7 @@ export interface GameStateData {
   currentRound: GameRound;
   gameHistory: GameRound[];
   winningTeam: Team | null;
+  finishOrder: PlayerPosition[]; // 出牌完成顺序：[0]=头游, [1]=二游, [2]=三游, [3]=末游
   startedAt: Date;
   endedAt: Date | null;
 }

@@ -12,6 +12,15 @@ import {
   groupCardsByRank,
   getCardReportStatus,
   isHeartRank,
+  initiateTributePhase,
+  executeSingleTribute,
+  executeSingleReturn,
+  allTributesCompleted,
+  getPendingTributePlayer,
+  getPendingReturnPlayer,
+  getMaxTributeCard,
+  getValidReturnCards,
+  canResistTribute,
 } from "@/lib/gameEngine";
 import {
   danzeroGetAIMove,
@@ -110,6 +119,10 @@ export default function GameTable({
   const [collapsedRounds, setCollapsedRounds] = useState<Set<number>>(new Set());
   const [historyView, setHistoryView] = useState<"detail" | "summary">("detail"); // 明细 or 汇总
   const [hoverCard, setHoverCard] = useState<Card | null>(null); // 当前 hover 的牌
+  // 贡牌还牌相关状态
+  const [tributePhase, setTributePhase] = useState<'none' | 'tribute' | 'return'>('none'); // 贡牌还牌阶段
+  const [tributeGameState, setTributeGameState] = useState<GameStateData | null>(null); // 贡牌还牌中的游戏状态
+  const [tributeSelectedCard, setTributeSelectedCard] = useState<Card | null>(null); // 已选择的贡牌/还牌牌
   const lastClickTimeRef = useRef<{ rank: string; suit: string; time: number } | null>(null); // 双击检测
   const singleClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // 单击即出定时器
   const gameStateRef = useRef(gameState); // 始终指向最新 gameState，避免陷旧闭包
@@ -157,6 +170,19 @@ export default function GameTable({
   useEffect(() => {
     if (gameState.status === GameStatus.Finished) {
       if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+      // 检查是否需要进入贡牌阶段
+      // 贡牌条件：第二局及以后，且有赢家队伍
+      if (gameState.currentRound.roundNumber > 1 && gameState.winningTeam !== null) {
+        const newState = initiateTributePhase(gameState, gameState.winningTeam);
+        if (newState && newState.currentRound.tribute && newState.currentRound.tribute.length > 0) {
+          const allDone = newState.currentRound.tribute.every(t => t.isCompleted);
+          if (!allDone) {
+            setTributeGameState(newState);
+            setTributePhase('tribute');
+            return; // 不直接调用 onGameEnd，等贡牌还牌完成后再调用
+          }
+        }
+      }
       onGameEnd(gameState);
     }
   }, [gameState.status]);
@@ -509,6 +535,221 @@ export default function GameTable({
           )}
         </button>
       </header>
+
+      {/* ===== 贡牌还牌覆盖层 ===== */}
+      {tributePhase !== 'none' && tributeGameState && (() => {
+        const tribute = tributeGameState.currentRound.tribute;
+        const myPos = PlayerPosition.Player0;
+        const pendingTributePlayer = getPendingTributePlayer(tributeGameState);
+        const pendingReturnPlayer = getPendingReturnPlayer(tributeGameState);
+        const isMyTributeTime = pendingTributePlayer === myPos;
+        const isMyReturnTime = pendingReturnPlayer === myPos;
+        const myHand = tributeGameState.players[myPos].hand;
+        const myMaxCard = isMyTributeTime ? getMaxTributeCard(tributeGameState.players[myPos].hand, tributeGameState.currentRank) : null;
+        // 找到我方对应的进贡信息
+        const myTributeInfo = isMyReturnTime ? tributeGameState.currentRound.tribute.find(t => t.toPlayer === myPos) : null;
+        const myTributePlayer = myTributeInfo?.fromPlayer ?? null;
+        const myReturnCards = (isMyReturnTime && myTributePlayer !== null)
+          ? getValidReturnCards(tributeGameState.players[myPos].hand, myPos, myTributePlayer, tributeGameState.currentRank)
+          : [];
+        const canResist = isMyTributeTime && canResistTribute(tributeGameState.players[myPos].hand);
+
+        return (
+          <div className="gt-tribute-overlay">
+            <div className="gt-tribute-panel">
+              <div className="gt-tribute-title">
+                {tributePhase === 'tribute' ? '贡牌阶段' : '还牌阶段'}
+              </div>
+              <div className="gt-tribute-desc">
+                {tributePhase === 'tribute' && pendingTributePlayer !== null && (
+                  <>
+                    {pendingTributePlayer === myPos
+                      ? `当前为打 ${tributeGameState.currentRank} 局，你是下游，需要进贡最大的牌给上游`
+                      : `等待 AI 玩家进贡中...`
+                    }
+                  </>
+                )}
+                {tributePhase === 'return' && pendingReturnPlayer !== null && (
+                  <>
+                    {pendingReturnPlayer === myPos
+                      ? '你是上游，请选择一张牌还给下游'
+                      : `等待 AI 玩家还牌中...`
+                    }
+                  </>
+                )}
+              </div>
+
+              {/* 贡牌进度 */}
+              <div className="gt-tribute-progress">
+                {tribute.map((t, i) => (
+                  <div key={i} className={`gt-tribute-item ${t.isCompleted ? 'done' : 'pending'}`}>
+                    <span>玩家{t.fromPlayer} → 玩家{t.toPlayer}</span>
+                    <span>{t.isCompleted ? '✅ 已完成' : '⏳ 等待'}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* 抗贡提示 */}
+              {canResist && (
+                <div className="gt-tribute-resist">
+                  你有两张大王，可以抗贡！
+                  <button
+                    className="gt-tribute-btn resist"
+                    onClick={() => {
+                      // 抗贡：直接跳过贡牌阶段，传递贡牌状态（含抗贡标记）
+                      setTributePhase('none');
+                      setTributeGameState(null);
+                      onGameEnd(tributeGameState);
+                    }}
+                  >
+                    抗贡！
+                  </button>
+                </div>
+              )}
+
+              {/* 我的贡牌选择 */}
+              {isMyTributeTime && !canResist && myMaxCard && (
+                <div className="gt-tribute-action">
+                  <div className="gt-tribute-action-title">你必须进贡此牌：</div>
+                  <div
+                    className={`gt-tribute-card ${tributeSelectedCard?.rank === myMaxCard.rank && tributeSelectedCard?.suit === myMaxCard.suit ? 'selected' : ''}`}
+                    onClick={() => setTributeSelectedCard(myMaxCard)}
+                  >
+                    <span className={`gt-tc-rank ${myMaxCard.suit === 'hearts' || myMaxCard.suit === 'diamonds' ? 'red' : ''}`}>
+                      {myMaxCard.rank === 'joker_big' ? '大王' : myMaxCard.rank === 'joker_small' ? '小王' : myMaxCard.rank}
+                    </span>
+                    <span className="gt-tc-suit">
+                      {myMaxCard.suit === 'hearts' ? '♥' : myMaxCard.suit === 'diamonds' ? '♦' : myMaxCard.suit === 'clubs' ? '♣' : '♠'}
+                    </span>
+                  </div>
+                  <button
+                    className="gt-tribute-btn confirm"
+                    disabled={!tributeSelectedCard}
+                    onClick={() => {
+                      if (!tributeSelectedCard) return;
+                      const result = executeSingleTribute(tributeGameState, myPos, tributeSelectedCard);
+                      if (result.success && result.newState) {
+                        setTributeSelectedCard(null);
+                        const allTribDone = result.newState.currentRound.tribute.every(t => t.tributeCard !== null);
+                        if (allTribDone) {
+                          setTributeGameState(result.newState);
+                          setTributePhase('return');
+                        } else {
+                          setTributeGameState(result.newState);
+                        }
+                      }
+                    }}
+                  >
+                    确认进贡
+                  </button>
+                </div>
+              )}
+
+              {/* 我的还牌选择 */}
+              {isMyReturnTime && myReturnCards.length > 0 && (
+                <div className="gt-tribute-action">
+                  <div className="gt-tribute-action-title">选择还给对方的牌：</div>
+                  <div className="gt-tribute-cards">
+                    {myReturnCards.map((card, i) => (
+                      <div
+                        key={i}
+                        className={`gt-tribute-card ${tributeSelectedCard?.rank === card.rank && tributeSelectedCard?.suit === card.suit ? 'selected' : ''}`}
+                        onClick={() => setTributeSelectedCard(card)}
+                      >
+                        <span className={`gt-tc-rank ${card.suit === 'hearts' || card.suit === 'diamonds' ? 'red' : ''}`}>
+                          {card.rank === 'joker_big' ? '大王' : card.rank === 'joker_small' ? '小王' : card.rank}
+                        </span>
+                        <span className="gt-tc-suit">
+                          {card.suit === 'hearts' ? '♥' : card.suit === 'diamonds' ? '♦' : card.suit === 'clubs' ? '♣' : '♠'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    className="gt-tribute-btn confirm"
+                    disabled={!tributeSelectedCard}
+                    onClick={() => {
+                      if (!tributeSelectedCard || pendingReturnPlayer === null || myTributePlayer === null) return;
+                      const result = executeSingleReturn(tributeGameState, myPos, tributeSelectedCard, myTributePlayer);
+                      if (result.success && result.newState) {
+                        setTributeSelectedCard(null);
+                        const allDone = result.newState.currentRound.tribute.every(t => t.isCompleted);
+                        if (allDone) {
+                          setTributePhase('none');
+                          setTributeGameState(null);
+                          onGameEnd(result.newState); // 传递含贡还牌结果的最终状态
+                        } else {
+                          setTributeGameState(result.newState);
+                        }
+                      }
+                    }}
+                  >
+                    确认还牌
+                  </button>
+                </div>
+              )}
+
+              {/* AI 自动处理非我方贡牌 */}
+              {!isMyTributeTime && !isMyReturnTime && (tributePhase === 'tribute' || tributePhase === 'return') && (
+                <button
+                  className="gt-tribute-btn confirm"
+                  onClick={() => {
+                    // 模拟 AI 自动进贡/还牌
+                    let currentState = tributeGameState;
+                    // AI 进贡
+                    if (tributePhase === 'tribute') {
+                      const pending = getPendingTributePlayer(currentState);
+                      if (pending !== null && pending !== myPos) {
+                        const maxCard = getMaxTributeCard(currentState.players[pending].hand, currentState.currentRank);
+                        if (maxCard) {
+                          const result = executeSingleTribute(currentState, pending, maxCard);
+                          if (result.success && result.newState) {
+                            currentState = result.newState;
+                            const allTribDone = currentState.currentRound.tribute.every(t => t.tributeCard !== null);
+                            if (allTribDone) {
+                              setTributeGameState(currentState);
+                              setTributePhase('return');
+                              return;
+                            }
+                          }
+                        }
+                      }
+                    }
+                    // AI 还牌
+                    if (tributePhase === 'return') {
+                      const pendingReturn = getPendingReturnPlayer(currentState);
+                      if (pendingReturn !== null && pendingReturn !== myPos) {
+                        // 找到这个还牌玩家对应的进贡信息
+                        const tributeInfo = currentState.currentRound.tribute.find(t => t.toPlayer === pendingReturn);
+                        if (tributeInfo) {
+                          const validCards = getValidReturnCards(currentState.players[pendingReturn].hand, pendingReturn, tributeInfo.fromPlayer, currentState.currentRank);
+                          if (validCards.length > 0) {
+                            const result = executeSingleReturn(currentState, pendingReturn, validCards[0], tributeInfo.fromPlayer);
+                            if (result.success && result.newState) {
+                              currentState = result.newState;
+                              const allDone = currentState.currentRound.tribute.every(t => t.isCompleted);
+                              if (allDone) {
+                                setTributePhase('none');
+                                setTributeGameState(null);
+                                onGameEnd(currentState); // 传递含贡还牌结果的最终状态
+                                return;
+                              }
+                              setTributeGameState(currentState);
+                            }
+                          }
+                        }
+                      }
+                    }
+                    setTributeGameState(currentState);
+                  }}
+                >
+                  继续（AI 处理）
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ===== 主体 ===== */}
       <div className="gt-body">

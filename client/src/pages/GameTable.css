@@ -1323,3 +1323,184 @@
   .gt-history-panel.open { width: 165px; }
   .gt-btn-pass, .gt-btn-play { padding: 7px 13px; font-size: 12px; }
 }
+
+/* ===== 贡牌还牌覆盖层 ===== */
+.gt-tribute-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.gt-tribute-panel {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  border: 2px solid #e8c84a;
+  border-radius: 16px;
+  padding: 28px 32px;
+  min-width: 360px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(232, 200, 74, 0.2);
+  color: #fff;
+}
+
+.gt-tribute-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #e8c84a;
+  text-align: center;
+  margin-bottom: 12px;
+  letter-spacing: 2px;
+}
+
+.gt-tribute-desc {
+  font-size: 0.9rem;
+  color: #b0bec5;
+  text-align: center;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.gt-tribute-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.gt-tribute-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  padding: 4px 0;
+}
+
+.gt-tribute-item.done { color: #4caf50; }
+.gt-tribute-item.pending { color: #ffc107; }
+
+.gt-tribute-resist {
+  background: rgba(255, 152, 0, 0.15);
+  border: 1px solid #ff9800;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+  color: #ff9800;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gt-tribute-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.gt-tribute-action-title {
+  font-size: 0.9rem;
+  color: #90caf9;
+  font-weight: 600;
+}
+
+.gt-tribute-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.gt-tribute-card {
+  width: 52px;
+  height: 76px;
+  background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  gap: 2px;
+}
+
+.gt-tribute-card:hover {
+  transform: translateY(-4px);
+  border-color: #e8c84a;
+  box-shadow: 0 4px 12px rgba(232, 200, 74, 0.4);
+}
+
+.gt-tribute-card.selected {
+  border-color: #e8c84a;
+  background: linear-gradient(135deg, #fff9e6 0%, #fff3cc 100%);
+  transform: translateY(-6px);
+  box-shadow: 0 6px 16px rgba(232, 200, 74, 0.5);
+}
+
+.gt-tc-rank {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #333;
+  line-height: 1;
+}
+
+.gt-tc-rank.red { color: #e53935; }
+
+.gt-tc-suit {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.gt-tribute-btn {
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+}
+
+.gt-tribute-btn.confirm {
+  background: linear-gradient(135deg, #e8c84a 0%, #d4a017 100%);
+  color: #1a1a2e;
+  width: 100%;
+}
+
+.gt-tribute-btn.confirm:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f0d060 0%, #e8c84a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(232, 200, 74, 0.4);
+}
+
+.gt-tribute-btn.confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.gt-tribute-btn.resist {
+  background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);
+  color: #fff;
+  width: 100%;
+}
+
+.gt-tribute-btn.resist:hover {
+  background: linear-gradient(135deg, #ffb74d 0%, #ff9800 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+}

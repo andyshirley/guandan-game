@@ -449,6 +449,7 @@ export function createInitialGameState(
     },
     gameHistory: [],
     winningTeam: null,
+    finishOrder: [],
     startedAt: new Date(),
     endedAt: null,
   };
@@ -508,11 +509,36 @@ export function executePlay(
   newState.currentRound.borrowWindTriggered = false; // 出牌后重置借风标志
   newState.currentRound.plays.push({ player: playerPos, play });
 
-  // 检查游戏是否结束
+  // 检查玩家是否出完牌
   if (newHand.length === 0) {
-    newState.status = GameStatus.Finished;
-    newState.winningTeam = getTeam(playerPos);
-    newState.endedAt = new Date();
+    // 记录完成顺序
+    if (!newState.finishOrder.includes(playerPos)) {
+      newState.finishOrder.push(playerPos);
+    }
+    // 检查剩余玩家数
+    const remainingPlayers = newState.players.filter(p => p.cardsRemaining > 0);
+    if (remainingPlayers.length <= 1) {
+      // 最后一个玩家也完成
+      const lastPlayer = remainingPlayers[0];
+      if (lastPlayer && !newState.finishOrder.includes(lastPlayer.position)) {
+        newState.finishOrder.push(lastPlayer.position);
+      }
+      newState.status = GameStatus.Finished;
+      // 头游对应的队伍获胜
+      newState.winningTeam = newState.finishOrder.length > 0 ? getTeam(newState.finishOrder[0]) : getTeam(playerPos);
+      newState.endedAt = new Date();
+      return { success: true, newState };
+    }
+    // 还有多个玩家未完成，继续游戏
+    newState.currentRound.currentPlayer = getNextPlayer(playerPos);
+    // 跳过已完成的玩家
+    let nextPlayer = newState.currentRound.currentPlayer;
+    let attempts = 0;
+    while (newState.players[nextPlayer].cardsRemaining === 0 && attempts < 4) {
+      nextPlayer = getNextPlayer(nextPlayer);
+      attempts++;
+    }
+    newState.currentRound.currentPlayer = nextPlayer;
     return { success: true, newState };
   }
 
@@ -1354,21 +1380,48 @@ export function getFinalWinner(gameState: GameStateData): Team | null {
 
 /**
  * 获取本局的贡牌者（下游玩家）
- * 规则：上一局的下游者需要进贡
+ * 规则：
+ * - 头游与二游同队：双下，下游和末游各贡一张（双贡）
+ * - 头游与二游不同队：仅末游进贡一张给头游
+ * - 拆贡：末游有两张大王则不用进贡
  */
 export function getTributePlayers(
   gameState: GameStateData,
   winningTeam: Team
 ): PlayerPosition[] {
-  // 获胜队伍的下游是失败队伍的玩家
-  // 简化处理：失败队伍的所有玩家都需要进贡
-  const losers: PlayerPosition[] = [];
-  for (let i = 0; i < 4; i++) {
-    if (getTeam(i as PlayerPosition) !== winningTeam) {
-      losers.push(i as PlayerPosition);
+  const finishOrder = gameState.finishOrder;
+  
+  // 如果没有完成顺序，回退到旧逻辑
+  if (finishOrder.length < 2) {
+    const losers: PlayerPosition[] = [];
+    for (let i = 0; i < 4; i++) {
+      if (getTeam(i as PlayerPosition) !== winningTeam) {
+        losers.push(i as PlayerPosition);
+      }
     }
+    return losers;
   }
-  return losers;
+  
+  const first = finishOrder[0]; // 头游
+  const second = finishOrder[1]; // 二游
+  const third = finishOrder[2]; // 三游
+  const fourth = finishOrder[3]; // 末游
+  
+  // 判断是否双下：头游和二游是同一队伍
+  const isDoubleDown = getTeam(first) === getTeam(second);
+  
+  if (isDoubleDown) {
+    // 双下：下游和末游各贡一张（双贡）
+    const tributePlayers: PlayerPosition[] = [];
+    if (third !== undefined) tributePlayers.push(third);
+    if (fourth !== undefined) tributePlayers.push(fourth);
+    return tributePlayers;
+  } else {
+    // 非双下：仅末游进贡一张给头游
+    if (fourth !== undefined) return [fourth];
+    if (third !== undefined) return [third];
+    return [];
+  }
 }
 
 /**
@@ -1381,20 +1434,53 @@ export function initiateTributePhase(
 ): GameStateData {
   const newState = deepCloneGameState(gameState);
   const tributePlayers = getTributePlayers(gameState, winningTeam);
+  const finishOrder = gameState.finishOrder;
   
   // 清空旧的贡牌信息
   newState.currentRound.tribute = [];
   
-  // 为每个下游玩家创建贡牌信息
-  for (const tributePlayer of tributePlayers) {
-    const teammate = getTeammate(tributePlayer);
-    newState.currentRound.tribute.push({
-      fromPlayer: tributePlayer,
-      toPlayer: teammate,
-      tributeCard: null,
-      returnCard: null,
-      isCompleted: false,
-    });
+  if (tributePlayers.length === 0) return newState;
+  
+  const first = finishOrder[0]; // 头游
+  const second = finishOrder[1]; // 二游
+  const isDoubleDown = first !== undefined && second !== undefined && getTeam(first) === getTeam(second);
+  
+  if (isDoubleDown && tributePlayers.length === 2) {
+    // 双贡：下游贡给头游，末游贡给二游
+    // 分配贡牌接收者：头游拿大牌，二游拿小牌
+    // 下游（三游）贡给二游，末游贡给头游
+    const third = finishOrder[2];
+    const fourth = finishOrder[3];
+    if (fourth !== undefined && first !== undefined) {
+      newState.currentRound.tribute.push({
+        fromPlayer: fourth, // 末游贡给头游（大牌）
+        toPlayer: first,
+        tributeCard: null,
+        returnCard: null,
+        isCompleted: false,
+      });
+    }
+    if (third !== undefined && second !== undefined) {
+      newState.currentRound.tribute.push({
+        fromPlayer: third, // 三游贡给二游（小牌）
+        toPlayer: second,
+        tributeCard: null,
+        returnCard: null,
+        isCompleted: false,
+      });
+    }
+  } else {
+    // 非双贡：仅末游贡给头游
+    const tributePlayer = tributePlayers[0];
+    if (tributePlayer !== undefined && first !== undefined) {
+      newState.currentRound.tribute.push({
+        fromPlayer: tributePlayer,
+        toPlayer: first,
+        tributeCard: null,
+        returnCard: null,
+        isCompleted: false,
+      });
+    }
   }
   
   return newState;
