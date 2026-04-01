@@ -641,6 +641,67 @@
   color: #d4af37;
 }
 
+/* 升级进度显示 */
+.result-rank-progress {
+  background: rgba(212,175,55,0.06);
+  border: 1px solid rgba(212,175,55,0.15);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rank-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.rank-team-label {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  min-width: 64px;
+  text-align: center;
+}
+.rank-team-label.my-team {
+  background: rgba(212,175,55,0.2);
+  color: #d4af37;
+}
+.rank-team-label.opp-team {
+  background: rgba(100,100,120,0.3);
+  color: rgba(255,255,255,0.5);
+}
+.rank-current {
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.85);
+  flex: 1;
+}
+.rank-arrow-up {
+  font-size: 12px;
+  color: #4ade80;
+  font-weight: 700;
+  animation: rank-pulse 1s ease-in-out infinite;
+}
+@keyframes rank-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.rank-next-hint {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  text-align: center;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 8px;
+  margin-top: 2px;
+}
+.rank-next-hint strong {
+  color: #d4af37;
+}
+
 /* ===== 响应式 ===== */
 @media (max-width: 900px) {
   .lobby-grid {

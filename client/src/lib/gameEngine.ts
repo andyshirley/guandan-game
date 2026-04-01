@@ -20,6 +20,7 @@ import {
   getTeam,
   getTeammate,
   RANK_ORDER,
+  LEVEL_ORDER,
 } from "@shared/types";
 
 // ===== 红心参谋（逢人配）支持 =====
@@ -138,17 +139,10 @@ export function isSequence(cards: Card[], currentRank: Rank): boolean {
     (a, b) => RANK_ORDER.indexOf(a) - RANK_ORDER.indexOf(b)
   );
 
-  // 检查是否为 A-2-3-4-5（绕圈顺，A 作为最小）
-  const isALow =
-    sorted[0] === Rank.Three &&
-    sorted[1] === Rank.Four &&
-    sorted[2] === Rank.Five &&
-    sorted[3] === Rank.Two &&
-    sorted[4] === Rank.Ace;
-  // 实际上 A-2-3-4-5 在 RANK_ORDER 中 A=11, 2=12，需要特殊处理
-  // 按照规则：A-2-3-4-5 是最小顺子
+  // 新 RANK_ORDER：2(0),3(1),4(2),5(3),6(4),7(5),8(6),9(7),10(8),J(9),Q(10),K(11),A(12)
   const rankIndices = sorted.map(r => RANK_ORDER.indexOf(r));
-  // 普通连续检查
+
+  // 普通连续检查（包括 10-J-Q-K-A，因为它们在新顺序中是连续的）
   let isNormalSeq = true;
   for (let i = 1; i < rankIndices.length; i++) {
     if (rankIndices[i] !== rankIndices[i - 1] + 1) {
@@ -158,23 +152,15 @@ export function isSequence(cards: Card[], currentRank: Rank): boolean {
   }
   if (isNormalSeq) return true;
 
-  // 特殊检查 A-2-3-4-5：索引为 [0,1,2,11,12] → 排序后 [0,1,2,11,12]
+  // 特殊检查 A-2-3-4-5：新顺序中索引为 [0,1,2,3,12]（即 2,3,4,5,A）
+  // A 在绕圈顺中作为最小牌
   const specialALow = rankIndices.length === 5 &&
-    rankIndices[0] === RANK_ORDER.indexOf(Rank.Three) &&
-    rankIndices[1] === RANK_ORDER.indexOf(Rank.Four) &&
-    rankIndices[2] === RANK_ORDER.indexOf(Rank.Five) &&
-    rankIndices[3] === RANK_ORDER.indexOf(Rank.Ace) &&
-    rankIndices[4] === RANK_ORDER.indexOf(Rank.Two);
-  if (specialALow) return true;
-
-  // 特殊检查 10-J-Q-K-A
-  const specialAHigh = rankIndices.length === 5 &&
-    rankIndices[0] === RANK_ORDER.indexOf(Rank.Ten) &&
-    rankIndices[1] === RANK_ORDER.indexOf(Rank.Jack) &&
-    rankIndices[2] === RANK_ORDER.indexOf(Rank.Queen) &&
-    rankIndices[3] === RANK_ORDER.indexOf(Rank.King) &&
+    rankIndices[0] === RANK_ORDER.indexOf(Rank.Two) &&
+    rankIndices[1] === RANK_ORDER.indexOf(Rank.Three) &&
+    rankIndices[2] === RANK_ORDER.indexOf(Rank.Four) &&
+    rankIndices[3] === RANK_ORDER.indexOf(Rank.Five) &&
     rankIndices[4] === RANK_ORDER.indexOf(Rank.Ace);
-  if (specialAHigh) return true;
+  if (specialALow) return true;
 
   return false;
 }
@@ -1285,12 +1271,13 @@ export function calculateNextRank(currentRank: Rank, winningTeam: Team, gameStat
   const winner = gameState.players.find(p => getTeam(p.position) === winningTeam);
   if (!winner) return currentRank;
   
-  // 赢家升级
-  const currentIndex = RANK_ORDER.indexOf(currentRank);
+  // 赢家升级：使用 LEVEL_ORDER（2 不参与升级）
+  const currentIndex = LEVEL_ORDER.indexOf(currentRank);
   if (currentIndex < 0) return currentRank;
   
-  const nextIndex = (currentIndex + 1) % RANK_ORDER.length;
-  return RANK_ORDER[nextIndex];
+  // 升级到下一级，如果已经是 A（最高级）则保持不变
+  if (currentIndex >= LEVEL_ORDER.length - 1) return currentRank; // 打到 A 已是最高级
+  return LEVEL_ORDER[currentIndex + 1];
 }
 
 /**
@@ -1298,14 +1285,13 @@ export function calculateNextRank(currentRank: Rank, winningTeam: Team, gameStat
  * 规则：升级必须是连续的（3→4→5...→A→2→3）
  */
 export function isValidRankProgression(from: Rank, to: Rank): boolean {
-  const fromIndex = RANK_ORDER.indexOf(from);
-  const toIndex = RANK_ORDER.indexOf(to);
+  const fromIndex = LEVEL_ORDER.indexOf(from);
+  const toIndex = LEVEL_ORDER.indexOf(to);
   
   if (fromIndex < 0 || toIndex < 0) return false;
   
-  // 下一级应该是 (fromIndex + 1) % 13
-  const expectedIndex = (fromIndex + 1) % RANK_ORDER.length;
-  return toIndex === expectedIndex;
+  // 下一级应该是 fromIndex + 1（2 不参与升级）
+  return toIndex === fromIndex + 1;
 }
 
 /**

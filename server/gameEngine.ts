@@ -117,23 +117,17 @@ export function isSequence(ranks: Rank[], currentRank: Rank): boolean {
   }
   if (isNormal) return true;
 
-  // 绕圈顺 A-2-3-4-5：索引 [0,1,2,11,12]
+  // 新 RANK_ORDER：2(0),3(1),4(2),5(3),6(4),7(5),8(6),9(7),10(8),J(9),Q(10),K(11),A(12)
+  // 绕圈顺 A-2-3-4-5：新索引为 [0,1,2,3,12]（即 2,3,4,5,A）
   const specialALow =
-    indices[0] === RANK_ORDER.indexOf(Rank.Three) &&
-    indices[1] === RANK_ORDER.indexOf(Rank.Four) &&
-    indices[2] === RANK_ORDER.indexOf(Rank.Five) &&
-    indices[3] === RANK_ORDER.indexOf(Rank.Ace) &&
-    indices[4] === RANK_ORDER.indexOf(Rank.Two);
+    indices[0] === RANK_ORDER.indexOf(Rank.Two) &&
+    indices[1] === RANK_ORDER.indexOf(Rank.Three) &&
+    indices[2] === RANK_ORDER.indexOf(Rank.Four) &&
+    indices[3] === RANK_ORDER.indexOf(Rank.Five) &&
+    indices[4] === RANK_ORDER.indexOf(Rank.Ace);
   if (specialALow) return true;
 
-  // 绕圈顺 10-J-Q-K-A
-  const specialAHigh =
-    indices[0] === RANK_ORDER.indexOf(Rank.Ten) &&
-    indices[1] === RANK_ORDER.indexOf(Rank.Jack) &&
-    indices[2] === RANK_ORDER.indexOf(Rank.Queen) &&
-    indices[3] === RANK_ORDER.indexOf(Rank.King) &&
-    indices[4] === RANK_ORDER.indexOf(Rank.Ace);
-  if (specialAHigh) return true;
+  // 10-J-Q-K-A 在新顺序中是连续的，普通检查就能通过
 
   return false;
 }

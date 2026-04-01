@@ -123,11 +123,13 @@ export default function GameTable({
   const [tributePhase, setTributePhase] = useState<'none' | 'tribute' | 'return'>('none'); // 贡牌还牌阶段
   const [tributeGameState, setTributeGameState] = useState<GameStateData | null>(null); // 贡牌还牌中的游戏状态
   const [tributeSelectedCard, setTributeSelectedCard] = useState<Card | null>(null); // 已选择的贡牌/还牌牌
+  const [lastPlayKey, setLastPlayKey] = useState(0); // 每次出牌时自增，用于触发动画重播
   const lastClickTimeRef = useRef<{ rank: string; suit: string; time: number } | null>(null); // 双击检测
   const singleClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // 单击即出定时器
   const gameStateRef = useRef(gameState); // 始终指向最新 gameState，避免陷旧闭包
   const historyEndRef = useRef<HTMLDivElement>(null);
   const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const aiTributeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // AI 贡牌自动处理定时器
   const danzeroHistoryRef = useRef<DanzeroGameHistory>(createDanzeroHistory());
   // 下面几个 ref 需要在 handleCardClick 和键盘快捷键中共用，必须在两者之前声明
   const selectedCardsRef = useRef<Card[]>([]);
@@ -148,6 +150,77 @@ export default function GameTable({
 
   // 始终同步最新 gameState 到 ref，供异步回调使用
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+
+  // AI 贡牌还牌自动化：当轮到 AI 贡牌/还牌时，自动延迟 1-2 秒后执行
+  useEffect(() => {
+    if (tributePhase === 'none' || !tributeGameState) return;
+    const myPos = PlayerPosition.Player0;
+    const pendingTributePlayer = getPendingTributePlayer(tributeGameState);
+    const pendingReturnPlayer = getPendingReturnPlayer(tributeGameState);
+    const isMyTributeTime = pendingTributePlayer === myPos;
+    const isMyReturnTime = pendingReturnPlayer === myPos;
+
+    // 如果是我方的回合，不自动处理
+    if (isMyTributeTime || isMyReturnTime) return;
+
+    // 清除旧定时器
+    if (aiTributeTimerRef.current) clearTimeout(aiTributeTimerRef.current);
+
+    // AI 贡牌阶段自动处理
+    if (tributePhase === 'tribute' && pendingTributePlayer !== null) {
+      const delay = 1000 + Math.random() * 800;
+      aiTributeTimerRef.current = setTimeout(() => {
+        const state = tributeGameState;
+        const maxCard = getMaxTributeCard(state.players[pendingTributePlayer].hand, state.currentRank);
+        if (maxCard) {
+          const result = executeSingleTribute(state, pendingTributePlayer, maxCard);
+          if (result.success && result.newState) {
+            const allTribDone = result.newState.currentRound.tribute.every(t => t.tributeCard !== null);
+            if (allTribDone) {
+              setTributeGameState(result.newState);
+              setTributePhase('return');
+            } else {
+              setTributeGameState(result.newState);
+            }
+          }
+        }
+      }, delay);
+    }
+
+    // AI 还牌阶段自动处理
+    if (tributePhase === 'return' && pendingReturnPlayer !== null) {
+      const delay = 1000 + Math.random() * 800;
+      aiTributeTimerRef.current = setTimeout(() => {
+        const state = tributeGameState;
+        const tributeInfo = state.currentRound.tribute.find(t => t.toPlayer === pendingReturnPlayer);
+        if (tributeInfo) {
+          const validCards = getValidReturnCards(
+            state.players[pendingReturnPlayer].hand,
+            pendingReturnPlayer,
+            tributeInfo.fromPlayer,
+            state.currentRank
+          );
+          if (validCards.length > 0) {
+            const result = executeSingleReturn(state, pendingReturnPlayer, validCards[0], tributeInfo.fromPlayer);
+            if (result.success && result.newState) {
+              const allDone = result.newState.currentRound.tribute.every(t => t.isCompleted);
+              if (allDone) {
+                setTributePhase('none');
+                setTributeGameState(null);
+                onGameEnd(result.newState);
+              } else {
+                setTributeGameState(result.newState);
+              }
+            }
+          }
+        }
+      }, delay);
+    }
+
+    return () => {
+      if (aiTributeTimerRef.current) clearTimeout(aiTributeTimerRef.current);
+    };
+  }, [tributePhase, tributeGameState]);
   useEffect(() => { selectedCardsRef.current = selectedCards; }, [selectedCards]);
   useEffect(() => { isMyTurnRef.current = isMyTurn; }, [isMyTurn]);
   useEffect(() => { isAIThinkingRef.current = isAIThinking; }, [isAIThinking]);
@@ -216,6 +289,7 @@ export default function GameTable({
       addPlayRecord(state, PlayerPosition.Player0, cards, false);
       updateDanzeroHistory(danzeroHistoryRef.current, PlayerPosition.Player0, cards, PlayerPosition.Player0);
       setSelectedCards([]);
+      setLastPlayKey(k => k + 1); // 触发出牌动画
       setGameState(result.newState!);
       return true;
     } else {
@@ -246,6 +320,7 @@ export default function GameTable({
           setStatusMsg(`${getPlayerLabel(pos)} 出了 ${typeLabel ? getCardTypeLabel(typeLabel) : ""}（${aiCards.length}张）`);
           addPlayRecord(state, pos, aiCards, false);
           updateDanzeroHistory(danzeroHistoryRef.current, pos, aiCards, PlayerPosition.Player0);
+          setLastPlayKey(k => k + 1); // 触发 AI 出牌动画
         } else {
           const passResult = executePass(state, pos);
           newState = passResult.newState!;
@@ -689,62 +764,14 @@ export default function GameTable({
                 </div>
               )}
 
-              {/* AI 自动处理非我方贡牌 */}
+              {/* AI 自动处理非我方贡牌 - 显示思考中状态 */}
               {!isMyTributeTime && !isMyReturnTime && (tributePhase === 'tribute' || tributePhase === 'return') && (
-                <button
-                  className="gt-tribute-btn confirm"
-                  onClick={() => {
-                    // 模拟 AI 自动进贡/还牌
-                    let currentState = tributeGameState;
-                    // AI 进贡
-                    if (tributePhase === 'tribute') {
-                      const pending = getPendingTributePlayer(currentState);
-                      if (pending !== null && pending !== myPos) {
-                        const maxCard = getMaxTributeCard(currentState.players[pending].hand, currentState.currentRank);
-                        if (maxCard) {
-                          const result = executeSingleTribute(currentState, pending, maxCard);
-                          if (result.success && result.newState) {
-                            currentState = result.newState;
-                            const allTribDone = currentState.currentRound.tribute.every(t => t.tributeCard !== null);
-                            if (allTribDone) {
-                              setTributeGameState(currentState);
-                              setTributePhase('return');
-                              return;
-                            }
-                          }
-                        }
-                      }
-                    }
-                    // AI 还牌
-                    if (tributePhase === 'return') {
-                      const pendingReturn = getPendingReturnPlayer(currentState);
-                      if (pendingReturn !== null && pendingReturn !== myPos) {
-                        // 找到这个还牌玩家对应的进贡信息
-                        const tributeInfo = currentState.currentRound.tribute.find(t => t.toPlayer === pendingReturn);
-                        if (tributeInfo) {
-                          const validCards = getValidReturnCards(currentState.players[pendingReturn].hand, pendingReturn, tributeInfo.fromPlayer, currentState.currentRank);
-                          if (validCards.length > 0) {
-                            const result = executeSingleReturn(currentState, pendingReturn, validCards[0], tributeInfo.fromPlayer);
-                            if (result.success && result.newState) {
-                              currentState = result.newState;
-                              const allDone = currentState.currentRound.tribute.every(t => t.isCompleted);
-                              if (allDone) {
-                                setTributePhase('none');
-                                setTributeGameState(null);
-                                onGameEnd(currentState); // 传递含贡还牌结果的最终状态
-                                return;
-                              }
-                              setTributeGameState(currentState);
-                            }
-                          }
-                        }
-                      }
-                    }
-                    setTributeGameState(currentState);
-                  }}
-                >
-                  继续（AI 处理）
-                </button>
+                <div className="gt-tribute-ai-thinking">
+                  <span className="gt-tribute-ai-dot" />
+                  <span className="gt-tribute-ai-dot" />
+                  <span className="gt-tribute-ai-dot" />
+                  <span style={{ marginLeft: 8, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>AI 正在处理...</span>
+                </div>
               )}
             </div>
           </div>
@@ -799,14 +826,14 @@ export default function GameTable({
               {/* 出牌展示区 */}
               <div className="gt-play-zone">
                 {lastPlay ? (
-                  <div className="gt-last-play">
+                  <div className="gt-last-play" key={lastPlayKey}>
                     <div className="gt-last-play-header">
                       <span className="gt-last-play-who">{getPlayerLabel(gameState.currentRound.lastPlayer!)}</span>
                       <span className="gt-type-chip">{getCardTypeLabel(lastPlay.type)}</span>
                     </div>
-                    <div className="gt-last-play-cards">
+                    <div className="gt-last-play-cards gt-play-anim">
                       {lastPlay.cards.slice(0, 12).map((card, i) => (
-                        <MiniCard key={i} card={card} />
+                        <MiniCard key={i} card={card} style={{ animationDelay: `${i * 40}ms` }} />
                       ))}
                       {lastPlay.cards.length > 12 && (
                         <div className="gt-more-chip">+{lastPlay.cards.length - 12}</div>
@@ -1340,7 +1367,7 @@ function PlayerSeat({
   );
 }
 
-function MiniCard({ card }: { card: Card }) {
+function MiniCard({ card, style }: { card: Card; style?: React.CSSProperties }) {
   const isJoker = card.rank === "joker_small" || card.rank === "joker_big";
   const isBig = card.rank === "joker_big";
   const isRed = card.suit === "hearts" || card.suit === "diamonds";
@@ -1348,7 +1375,10 @@ function MiniCard({ card }: { card: Card }) {
   const rank = getRankDisplay(card.rank);
 
   return (
-    <div className={`gt-mini-card${isJoker ? (isBig ? " joker-big" : " joker-small") : ""}${isRed ? " red" : ""}`}>
+    <div
+      className={`gt-mini-card${isJoker ? (isBig ? " joker-big" : " joker-small") : ""}${isRed ? " red" : ""} gt-mini-card-anim`}
+      style={style}
+    >
       <span className="gt-mini-rank">{rank}</span>
       {!isJoker && <span className="gt-mini-suit">{suit}</span>}
     </div>

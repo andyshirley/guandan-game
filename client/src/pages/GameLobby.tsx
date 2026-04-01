@@ -19,8 +19,8 @@ import {
   Zap,
 } from "lucide-react";
 import GameTable from "./GameTable";
-import { GameStateData, Team } from "@shared/types";
-import { createInitialGameState } from "@/lib/gameEngine";
+import { GameStateData, Rank, Team } from "@shared/types";
+import { calculateNextRank, createInitialGameState, getRankDescription } from "@/lib/gameEngine";
 import "./GameLobby.css";
 
 type LobbyView = "lobby" | "playing" | "result";
@@ -35,6 +35,9 @@ export default function GameLobby() {
   // 连局升级计数：己方（玩家+AI北）和对方（AI东+AI西）升级次数
   const [myTeamWins, setMyTeamWins] = useState(0);
   const [opponentTeamWins, setOpponentTeamWins] = useState(0);
+  // 每队当前打的级别（连局升级联动）
+  const [team1Rank, setTeam1Rank] = useState<Rank>(Rank.Three); // 我方（玩家+北）
+  const [team2Rank, setTeam2Rank] = useState<Rank>(Rank.Three); // 对方（东+西）
 
   const saveGameMutation = trpc.game.finishGame.useMutation();
 
@@ -63,11 +66,15 @@ export default function GameLobby() {
     setFinalState(state);
     setView("result");
     setGameState(null);
-    // 更新升级计数
+    // 更新升级计数 + 计算下一局级别
     if (state.winningTeam === Team.Team1) {
       setMyTeamWins(w => w + 1);
+      // 我方赢：我方升一级
+      setTeam1Rank(calculateNextRank(state.currentRank, Team.Team1, state));
     } else if (state.winningTeam === Team.Team2) {
       setOpponentTeamWins(w => w + 1);
+      // 对方赢：对方升一级
+      setTeam2Rank(calculateNextRank(state.currentRank, Team.Team2, state));
     }
     if (isAuthenticated) {
       try {
@@ -84,14 +91,20 @@ export default function GameLobby() {
     setView("lobby");
     setGameState(null);
     setFinalState(null);
-    // 回大厅时重置计数
+    // 回大厅时重置计数和级别
     setMyTeamWins(0);
     setOpponentTeamWins(0);
+    setTeam1Rank(Rank.Three);
+    setTeam2Rank(Rank.Three);
   };
 
   const handlePlayAgain = () => {
     const playerName = user?.name || "玩家";
-    const newGame = createInitialGameState(playerName);
+    // 下一局的起始级别：取两队中较低的级别（双方都要打到这个级别）
+    // 官方规则：赢家队伍升级，下一局从赢家的新级别开始打
+    // 当前局的级别 = 本局 currentRank，下一局 = 赢家升级后的级别
+    const nextRank = finalState?.winningTeam === Team.Team1 ? team1Rank : team2Rank;
+    const newGame = createInitialGameState(playerName, nextRank);
     setGameState(newGame);
     setView("playing");
     setFinalState(null);
@@ -175,11 +188,25 @@ export default function GameLobby() {
               </div>
             </div>
 
-            {/* 升级信息 */}
-            <div className="result-rank-row">
-              <TrendingUp size={14} />
-              <span>当前升级级别：</span>
-              <strong className="result-rank-val">{finalState.currentRank}</strong>
+            {/* 升级信息 - 显示两队级别进度 */}
+            <div className="result-rank-progress">
+              <div className="rank-progress-row">
+                <span className="rank-team-label my-team">我方队伍</span>
+                <span className="rank-current">{getRankDescription(finalState.winningTeam === Team.Team1 ? team1Rank : finalState.currentRank)}</span>
+                {finalState.winningTeam === Team.Team1 && (
+                  <span className="rank-arrow-up">↑ 升级</span>
+                )}
+              </div>
+              <div className="rank-progress-row">
+                <span className="rank-team-label opp-team">对方队伍</span>
+                <span className="rank-current">{getRankDescription(finalState.winningTeam === Team.Team2 ? team2Rank : finalState.currentRank)}</span>
+                {finalState.winningTeam === Team.Team2 && (
+                  <span className="rank-arrow-up">↑ 升级</span>
+                )}
+              </div>
+              <div className="rank-next-hint">
+                下一局将打：<strong>{getRankDescription(finalState.winningTeam === Team.Team1 ? team1Rank : team2Rank)}</strong>
+              </div>
             </div>
 
             <div className="result-actions">

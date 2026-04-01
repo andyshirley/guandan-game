@@ -158,11 +158,25 @@ export interface PlayerStatistics {
   totalScore: number;
 }
 
-/** 升级级别顺序 */
+/** 牌点大小顺序（升序）
+ * 官方规则：大王 > 小王 > 参谋 > A > K > Q > J > 9 > 8 > 7 > 6 > 5 > 4 > 3 > 2
+ * 大小王通过 getRankValue 特殊处理，参谋通过 currentRank 匹配特殊处理
+ * 2 是最小的普通牌，A 是最大的普通牌
+ */
 export const RANK_ORDER = [
+  Rank.Two, Rank.Three, Rank.Four, Rank.Five, Rank.Six, Rank.Seven,
+  Rank.Eight, Rank.Nine, Rank.Ten, Rank.Jack, Rank.Queen,
+  Rank.King, Rank.Ace,
+];
+
+/** 升级级别顺序（不含 2）
+ * 官方规则：升级从 3 开始到 A，打完 A 即赢得游戏
+ * 2 不参与升级（但可用于顺子组合）
+ */
+export const LEVEL_ORDER = [
   Rank.Three, Rank.Four, Rank.Five, Rank.Six, Rank.Seven,
   Rank.Eight, Rank.Nine, Rank.Ten, Rank.Jack, Rank.Queen,
-  Rank.King, Rank.Ace, Rank.Two,
+  Rank.King, Rank.Ace,
 ];
 
 /** 获取队伍 */
