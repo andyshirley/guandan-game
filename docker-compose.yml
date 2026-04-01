@@ -1,0 +1,50 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: guandan-game:latest
+    container_name: guandan-game
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - DATABASE_URL=${DATABASE_URL:-}
+      - VITE_APP_ID=${VITE_APP_ID:-}
+      - VITE_OAUTH_PORTAL_URL=${VITE_OAUTH_PORTAL_URL:-}
+      - OAUTH_SERVER_URL=${OAUTH_SERVER_URL:-}
+    volumes:
+      # 如果需要持久化日志
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+    networks:
+      - guandan-network
+
+  # 如果需要 MySQL 数据库（可选）
+  # db:
+  #   image: mysql:8.0
+  #   container_name: guandan-db
+  #   restart: unless-stopped
+  #   environment:
+  #     - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpassword}
+  #     - MYSQL_DATABASE=guandan
+  #     - MYSQL_USER=${MYSQL_USER:-guandan}
+  #     - MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
+  #   volumes:
+  #     - mysql-data:/var/lib/mysql
+  #   networks:
+  #     - guandan-network
+
+networks:
+  guandan-network:
+    driver: bridge
+
+# volumes:
+#   mysql-data:
