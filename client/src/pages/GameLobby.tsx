@@ -36,8 +36,8 @@ export default function GameLobby() {
   const [myTeamWins, setMyTeamWins] = useState(0);
   const [opponentTeamWins, setOpponentTeamWins] = useState(0);
   // 每队当前打的级别（连局升级联动）
-  const [team1Rank, setTeam1Rank] = useState<Rank>(Rank.Three); // 我方（玩家+北）
-  const [team2Rank, setTeam2Rank] = useState<Rank>(Rank.Three); // 对方（东+西）
+  const [team1Rank, setTeam1Rank] = useState<Rank>(Rank.Two); // 我方（玩家+北）
+  const [team2Rank, setTeam2Rank] = useState<Rank>(Rank.Two); // 对方（东+西）
 
   const saveGameMutation = trpc.game.finishGame.useMutation();
 
@@ -94,8 +94,8 @@ export default function GameLobby() {
     // 回大厅时重置计数和级别
     setMyTeamWins(0);
     setOpponentTeamWins(0);
-    setTeam1Rank(Rank.Three);
-    setTeam2Rank(Rank.Three);
+    setTeam1Rank(Rank.Two);
+    setTeam2Rank(Rank.Two);
   };
 
   const handlePlayAgain = () => {

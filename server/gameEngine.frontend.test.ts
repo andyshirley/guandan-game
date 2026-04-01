@@ -25,9 +25,11 @@ function getRankValue(rank: Rank, currentRank: Rank): number {
 }
 
 function isRoyalBomb(cards: Card[]): boolean {
-  if (cards.length !== 2) return false;
-  const ranks = cards.map(c => c.rank);
-  return ranks.includes(Rank.SmallJoker) && ranks.includes(Rank.BigJoker);
+  // 官方规则第四条十：四大天王 = 大小王各两张（共 4 张）
+  if (cards.length !== 4) return false;
+  const smallJokers = cards.filter(c => c.rank === Rank.SmallJoker).length;
+  const bigJokers = cards.filter(c => c.rank === Rank.BigJoker).length;
+  return smallJokers === 2 && bigJokers === 2;
 }
 
 function isBomb(cards: Card[]): boolean {
@@ -260,12 +262,24 @@ describe("前端游戏引擎 - 牌型识别（基础）", () => {
     expect(identifyCardType(cards, currentRank)).toBe(CardType.Bomb);
   });
 
-  it("应该识别王炸（大小王）", () => {
+  it("应该识别王炸（大小王各两张，共 4 张）", () => {
+    // 官方规则：四大天王 = 大小王各两张
+    const cards = [
+      { rank: Rank.SmallJoker, suit: Suit.Hearts },
+      { rank: Rank.SmallJoker, suit: Suit.Hearts },
+      { rank: Rank.BigJoker, suit: Suit.Hearts },
+      { rank: Rank.BigJoker, suit: Suit.Hearts },
+    ];
+    expect(identifyCardType(cards, currentRank)).toBe(CardType.RoyalBomb);
+  });
+
+  it("大王+小王各 1 张（共 2 张）不是王炸（应返回 null）", () => {
+    // 官方规则：王炸必须是 4 张，不是斗地主的 2 张王炸
     const cards = [
       { rank: Rank.SmallJoker, suit: Suit.Hearts },
       { rank: Rank.BigJoker, suit: Suit.Hearts },
     ];
-    expect(identifyCardType(cards, currentRank)).toBe(CardType.RoyalBomb);
+    expect(identifyCardType(cards, currentRank)).toBeNull();
   });
 
   it("大王不能单独出（应返回 null）", () => {

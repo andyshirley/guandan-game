@@ -38,15 +38,14 @@ function getRankValue(rank: Rank, currentRank: Rank): number {
 }
 
 /**
- * 判断是否为王炸（大小王）
+ * 判断是否为王炸（四大天王）
+ * 官方规则第四条十：四大天王 = 大小王各两张（共 4 张）
  */
 export function isRoyalBomb(cards: Card[]): boolean {
-  if (cards.length !== 2) return false;
-  const ranks = cards.map((c) => c.rank).sort();
-  return (
-    (ranks[0] === Rank.SmallJoker && ranks[1] === Rank.BigJoker) ||
-    (ranks[0] === Rank.BigJoker && ranks[1] === Rank.SmallJoker)
-  );
+  if (cards.length !== 4) return false;
+  const smallJokers = cards.filter(c => c.rank === Rank.SmallJoker).length;
+  const bigJokers = cards.filter(c => c.rank === Rank.BigJoker).length;
+  return smallJokers === 2 && bigJokers === 2;
 }
 
 /**

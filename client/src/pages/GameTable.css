@@ -1588,3 +1588,56 @@
   40%  { opacity: 1; transform: translateX(-50%) scale(1); }
   100% { opacity: 0; transform: translateX(-50%) translateY(-30px) scale(0.9); }
 }
+
+/* ===== 名次标记（PlayerSeat 出完牌后显示） ===== */
+.gt-finish-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  z-index: 10;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  animation: gt-badge-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes gt-badge-pop {
+  from { transform: scale(0.4); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+/* 已出完文字 */
+.gt-cards-done {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f59e0b;
+  letter-spacing: 0.5px;
+}
+
+/* 玩家座位出完牌后的整体样式 */
+.gt-player-seat.finished {
+  opacity: 0.75;
+}
+.gt-player-seat.finished .gt-player-avatar {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+/* 南家控制栏名次显示 */
+.gt-finished-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 18px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+  animation: gt-badge-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}

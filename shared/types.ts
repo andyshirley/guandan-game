@@ -169,12 +169,12 @@ export const RANK_ORDER = [
   Rank.King, Rank.Ace,
 ];
 
-/** 升级级别顺序（不含 2）
- * 官方规则：升级从 3 开始到 A，打完 A 即赢得游戏
- * 2 不参与升级（但可用于顺子组合）
+/** 升级级别顺序（包含 2）
+ * 官方规则第三条十一：每局第一副牌从打 2 开始
+ * 升级从 2 开始到 A，打完 A 即赢得游戏
  */
 export const LEVEL_ORDER = [
-  Rank.Three, Rank.Four, Rank.Five, Rank.Six, Rank.Seven,
+  Rank.Two, Rank.Three, Rank.Four, Rank.Five, Rank.Six, Rank.Seven,
   Rank.Eight, Rank.Nine, Rank.Ten, Rank.Jack, Rank.Queen,
   Rank.King, Rank.Ace,
 ];

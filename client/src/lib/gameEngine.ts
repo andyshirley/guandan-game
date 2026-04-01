@@ -102,9 +102,11 @@ export function getRankValue(rank: Rank, currentRank: Rank): number {
 // ===== 牌型判断 =====
 
 export function isRoyalBomb(cards: Card[]): boolean {
-  if (cards.length !== 2) return false;
-  const ranks = cards.map((c) => c.rank);
-  return ranks.includes(Rank.SmallJoker) && ranks.includes(Rank.BigJoker);
+  // 官方规则第四条十：四大天王 = 大小王各两张（共4张），是最大的炸弹
+  if (cards.length !== 4) return false;
+  const smallJokers = cards.filter(c => c.rank === Rank.SmallJoker).length;
+  const bigJokers = cards.filter(c => c.rank === Rank.BigJoker).length;
+  return smallJokers === 2 && bigJokers === 2;
 }
 
 export function isBomb(cards: Card[]): boolean {
@@ -405,7 +407,7 @@ export function dealCards(): Card[][] {
 
 export function createInitialGameState(
   playerName: string,
-  currentRank: Rank = Rank.Three
+  currentRank: Rank = Rank.Two
 ): GameStateData {
   const hands = dealCards();
   // 发牌后对所有手牌按点数从小到大排序
@@ -621,10 +623,11 @@ export function findPlayableCombinations(
   const results: Card[][] = [];
   const targetType = lastPlay.type;
 
-  // 王炸
-  const jokers = hand.filter(c => c.rank === Rank.SmallJoker || c.rank === Rank.BigJoker);
-  if (jokers.length === 2) {
-    results.push(jokers);
+  // 王炸：官方规则第四条十，大小王各两张（共4张）
+  const smallJokersInHand = hand.filter(c => c.rank === Rank.SmallJoker);
+  const bigJokersInHand = hand.filter(c => c.rank === Rank.BigJoker);
+  if (smallJokersInHand.length >= 2 && bigJokersInHand.length >= 2) {
+    results.push([...smallJokersInHand.slice(0, 2), ...bigJokersInHand.slice(0, 2)]);
   }
 
   // 炸弹：推荐所有可能的炸弹张数（4、5、...N 张）
@@ -948,13 +951,12 @@ export function getValidReturnCards(
 
 /**
  * 判断是否可以抗贡
- * 规则：下游者抓到两个大王，则不用进贡
+ * 官方规则第十条三：下游者抓到两个大王（BigJoker），则不用进贡
+ * 注意：小王不算，必须是大王
  */
 export function canResistTribute(hand: Card[]): boolean {
-  const jokerCount = hand.filter(
-    c => c.rank === Rank.SmallJoker || c.rank === Rank.BigJoker
-  ).length;
-  return jokerCount >= 2;
+  const bigJokerCount = hand.filter(c => c.rank === Rank.BigJoker).length;
+  return bigJokerCount >= 2;
 }
 
 /**

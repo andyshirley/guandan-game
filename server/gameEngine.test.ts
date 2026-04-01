@@ -21,12 +21,23 @@ import {
 } from "./gameEngine";
 
 describe("Card Type Identification", () => {
-  it("should identify royal bomb", () => {
+  it("should identify royal bomb (4 cards: 2 small + 2 big jokers)", () => {
+    // 官方规则：四大天王 = 大小王各两张（共 4 张）
+    const cards: Card[] = [
+      { rank: Rank.SmallJoker, suit: Suit.Hearts },
+      { rank: Rank.SmallJoker, suit: Suit.Hearts },
+      { rank: Rank.BigJoker, suit: Suit.Hearts },
+      { rank: Rank.BigJoker, suit: Suit.Hearts },
+    ];
+    expect(isRoyalBomb(cards)).toBe(true);
+  });
+
+  it("should NOT identify 2-card royal bomb (斗地主 style)", () => {
     const cards: Card[] = [
       { rank: Rank.SmallJoker, suit: Suit.Hearts },
       { rank: Rank.BigJoker, suit: Suit.Hearts },
     ];
-    expect(isRoyalBomb(cards)).toBe(true);
+    expect(isRoyalBomb(cards)).toBe(false);
   });
 
   it("should identify bomb", () => {
@@ -127,6 +138,8 @@ describe("Card Play Validation", () => {
       type: CardType.RoyalBomb,
       cards: [
         { rank: Rank.SmallJoker, suit: Suit.Hearts },
+        { rank: Rank.SmallJoker, suit: Suit.Hearts },
+        { rank: Rank.BigJoker, suit: Suit.Hearts },
         { rank: Rank.BigJoker, suit: Suit.Hearts },
       ],
       value: 1000,

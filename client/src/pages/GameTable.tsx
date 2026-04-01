@@ -246,8 +246,9 @@ export default function GameTable({
     if (gameState.status === GameStatus.Finished) {
       if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
       // 检查是否需要进入贡牌阶段
-      // 贡牌条件：第二局及以后，且有赢家队伍
-      if (gameState.currentRound.roundNumber > 1 && gameState.winningTeam !== null) {
+      // 贡牌条件：每局结束后（包括第一局），且有赢家队伍
+      // 官方规则第十条：每副牌结束后，下游向上游贡牌
+      if (gameState.winningTeam !== null) {
         const newState = initiateTributePhase(gameState, gameState.winningTeam);
         if (newState && newState.currentRound.tribute && newState.currentRound.tribute.length > 0) {
           const allDone = newState.currentRound.tribute.every(t => t.isCompleted);
@@ -797,6 +798,7 @@ export default function GameTable({
               label="北家"
               teamColor="ally"
               passAnimKey={passAnimKey[PlayerPosition.Player2]}
+              finishRank={gameState.finishOrder.includes(PlayerPosition.Player2) ? gameState.finishOrder.indexOf(PlayerPosition.Player2) + 1 : undefined}
             />
           </div>
 
@@ -812,6 +814,7 @@ export default function GameTable({
                 teamColor="enemy"
                 compact
                 passAnimKey={passAnimKey[PlayerPosition.Player3]}
+                finishRank={gameState.finishOrder.includes(PlayerPosition.Player3) ? gameState.finishOrder.indexOf(PlayerPosition.Player3) + 1 : undefined}
               />
             </div>
 
@@ -884,6 +887,7 @@ export default function GameTable({
                 label="东家"
                 teamColor="enemy"
                 compact
+                finishRank={gameState.finishOrder.includes(PlayerPosition.Player1) ? gameState.finishOrder.indexOf(PlayerPosition.Player1) + 1 : undefined}
               />
             </div>
           </div>
@@ -1011,9 +1015,17 @@ export default function GameTable({
                 </div>
               </div>
 
-              {/* 操作按钮 */}
+              {/* 操作按鈕 */}
               <div className="gt-actions">
-                {!isMyTurn ? (
+                {myHand.length === 0 ? (
+                  <div className="gt-finished-badge">
+                    {(() => {
+                      const rank = gameState.finishOrder.indexOf(PlayerPosition.Player0);
+                      const labels = ['上游！🏆', '二游', '三游'];
+                      return rank >= 0 ? labels[rank] || `第${rank+1}名` : '已出完';
+                    })()}
+                  </div>
+                ) : !isMyTurn ? (
                   <div className="gt-waiting-msg">
                     {isAIThinking ? (
                       <><Zap size={13} className="gt-pulse" /> AI 出牌中...</>
@@ -1044,8 +1056,7 @@ export default function GameTable({
                   </>
                 )}
               </div>
-
-              {/* 牌谱快捷按钮（移动端） */}
+              {/* 牌谱快捷按鈕（移动端） */}
               <button
                 className={`gt-history-fab ${showHistory ? "active" : ""}`}
                 onClick={() => setShowHistory(v => !v)}
@@ -1350,6 +1361,7 @@ function PlayerSeat({
   teamColor,
   compact = false,
   passAnimKey,
+  finishRank,
 }: {
   player: { name: string; cardsRemaining: number; position: PlayerPosition };
   isCurrentTurn: boolean;
@@ -1358,11 +1370,19 @@ function PlayerSeat({
   teamColor: "ally" | "enemy";
   compact?: boolean;
   passAnimKey?: number;
+  finishRank?: number; // 1=上游, 2=二游, 3=三游
 }) {
+  const rankLabels = ['上游', '二游', '三游'];
+  const rankColors = ['#f59e0b', '#9ca3af', '#cd7c2f'];
   return (
-    <div className={`gt-player-seat${isCurrentTurn ? " active" : ""}${compact ? " compact" : ""} ${teamColor}`} style={{ position: 'relative' }}>
+    <div className={`gt-player-seat${isCurrentTurn ? " active" : ""}${compact ? " compact" : ""}${player.cardsRemaining === 0 ? " finished" : ""} ${teamColor}`} style={{ position: 'relative' }}>
       {passAnimKey && (
         <div key={passAnimKey} className="gt-pass-float">不要</div>
+      )}
+      {finishRank !== undefined && (
+        <div className="gt-finish-badge" style={{ backgroundColor: rankColors[finishRank - 1] || '#6b7280' }}>
+          {rankLabels[finishRank - 1] || `第${finishRank}名`}
+        </div>
       )}
       <div className="gt-player-avatar">
         {isThinking ? (
@@ -1376,8 +1396,11 @@ function PlayerSeat({
         <div className="gt-player-label">{label}</div>
         <div className="gt-player-name">{player.name}</div>
         <div className="gt-player-cards-left">
-          <span className="gt-cards-num">{player.cardsRemaining}</span>
-          <span className="gt-cards-label">张</span>
+          {player.cardsRemaining === 0 ? (
+            <span className="gt-cards-done">已出完</span>
+          ) : (
+            <><span className="gt-cards-num">{player.cardsRemaining}</span><span className="gt-cards-label">张</span></>
+          )}
         </div>
       </div>
     </div>
