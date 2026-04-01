@@ -39,6 +39,7 @@ export enum Rank {
 
 /** 单张牌 */
 export interface Card {
+  id: string;  // 唯一标识符，用于区分相同花色相同点数的牌
   rank: Rank;
   suit: Suit;
 }

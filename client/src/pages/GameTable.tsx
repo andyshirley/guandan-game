@@ -108,6 +108,12 @@ export default function GameTable({
   myTeamWins = 0,
   opponentTeamWins = 0,
 }: GameTableProps) {
+  // Safety check MUST be before any Hooks to comply with React Hooks rules
+  if (!initialGameState || !initialGameState.currentRound) {
+    console.error("GameTable: Invalid initialGameState", initialGameState);
+    return <div style={{ padding: '20px', color: 'red' }}>游戏状态错误，请返回大厅重新开始</div>;
+  }
+
   const [gameState, setGameState] = useState<GameStateData>(initialGameState);
   const [selectedCards, setSelectedCards] = useState<Card[]>([]);
   const [statusMsg, setStatusMsg] = useState<string>("游戏开始！轮到你出牌");
@@ -126,7 +132,7 @@ export default function GameTable({
   const [lastPlayKey, setLastPlayKey] = useState(0); // 每次出牌时自增，用于触发动画重播
   // 过牌浮动提示动画：记录每个玩家最近一次过牌的时间戳
   const [passAnimKey, setPassAnimKey] = useState<Record<number, number>>({}); // pos -> timestamp
-  const lastClickTimeRef = useRef<{ rank: string; suit: string; time: number } | null>(null); // 双击检测
+  const lastClickTimeRef = useRef<{ id: string; rank: string; suit: string; time: number } | null>(null); // 双击检测
   const singleClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // 单击即出定时器
   const gameStateRef = useRef(gameState); // 始终指向最新 gameState，避免陷旧闭包
   const historyEndRef = useRef<HTMLDivElement>(null);
@@ -139,12 +145,8 @@ export default function GameTable({
   const isAIThinkingRef = useRef(false);
   // playCardsRef 在 playCards 定义后立即更新
   const playCardsRef = useRef<(cards: Card[]) => boolean>(() => false);
-
-  // Safety check: ensure gameState and currentRound are defined
-  if (!gameState || !gameState.currentRound) {
-    console.error("GameTable: Invalid gameState", gameState);
-    return null;
-  }
+  // runAITurnRef 在 runAITurn 定义后立即更新
+  const runAITurnRef = useRef<(state: GameStateData) => void>(() => {});
 
   const currentPlayer = gameState.currentRound.currentPlayer;
   const isMyTurn = currentPlayer === PlayerPosition.Player0;
@@ -294,6 +296,13 @@ export default function GameTable({
       setSelectedCards([]);
       setLastPlayKey(k => k + 1); // 触发出牌动画
       setGameState(result.newState!);
+
+      // 玩家出牌后，如果下一个玩家是AI且游戏未结束，立即触发AI出牌
+      if (result.newState!.status !== GameStatus.Finished &&
+          result.newState!.currentRound.currentPlayer !== PlayerPosition.Player0) {
+        runAITurnRef.current(result.newState!);
+      }
+
       return true;
     } else {
       setErrorMsg(result.error || "出牌失败");
@@ -366,6 +375,8 @@ export default function GameTable({
       }
     }, delay);
   }, [addPlayRecord]);
+  // 始终同步最新 runAITurn 到 ref
+  useEffect(() => { runAITurnRef.current = runAITurn; }, [runAITurn]);
 
   useEffect(() => {
     if (gameState.status === GameStatus.Finished) return;
@@ -383,7 +394,7 @@ export default function GameTable({
 
     const now = Date.now();
     const last = lastClickTimeRef.current;
-    const isSameCard = last && last.rank === card.rank && last.suit === card.suit;
+    const isSameCard = last && last.id === card.id;
     const isDoubleClick = isSameCard && (now - last!.time) < 350;
 
     // 双击：全选同点数的所有牌
@@ -391,7 +402,7 @@ export default function GameTable({
       lastClickTimeRef.current = null;
       const sameRankCards = myHand.filter(c => c.rank === card.rank);
       const allAlreadySelected = sameRankCards.every(c =>
-        selectedCards.some(s => s.rank === c.rank && s.suit === c.suit)
+        selectedCards.some(s => s.id === c.id)
       );
       if (allAlreadySelected) {
         // 已全选则取消全选
@@ -407,10 +418,10 @@ export default function GameTable({
     }
 
     // 记录本次点击时间
-    lastClickTimeRef.current = { rank: card.rank, suit: card.suit, time: now };
+    lastClickTimeRef.current = { id: card.id, rank: card.rank, suit: card.suit, time: now };
 
     const isSelected = selectedCards.some(
-      (c) => c.rank === card.rank && c.suit === card.suit
+      (c) => c.id === card.id
     );
 
     if (isSelected) {
@@ -450,6 +461,12 @@ export default function GameTable({
     setSelectedCards([]);
     setPassAnimKey(prev => ({ ...prev, [PlayerPosition.Player0]: Date.now() }));
     setGameState(result.newState!);
+
+    // 玩家pass后，如果下一个玩家是AI且游戏未结束，立即触发AI出牌
+    if (result.newState!.status !== GameStatus.Finished &&
+        result.newState!.currentRound.currentPlayer !== PlayerPosition.Player0) {
+      runAITurnRef.current(result.newState!);
+    }
   };
 
   const getPlayValidation = (): { valid: boolean; reason: string } => {
@@ -482,7 +499,7 @@ export default function GameTable({
       const candidates = findPlayableCombinations(hand, lastPlay, currentRank);
       for (const combo of candidates) {
         const hasAllSelected = selectedCards.every(s =>
-          combo.some(c => c.rank === s.rank && c.suit === s.suit)
+          combo.some(c => c.id === s.id)
         );
         if (hasAllSelected) results.push(combo);
       }
@@ -493,21 +510,21 @@ export default function GameTable({
       for (const [, cards] of Object.entries(groups)) {
         if (cards.length >= 2) {
           const pair = cards.slice(0, 2);
-          if (selectedCards.every(s => pair.some(c => c.rank === s.rank && c.suit === s.suit))) {
+          if (selectedCards.every(s => pair.some(c => c.id === s.id))) {
             if (identifyCardType(pair, currentRank)) results.push(pair);
           }
         }
         // 三张
         if (cards.length >= 3) {
           const triple = cards.slice(0, 3);
-          if (selectedCards.every(s => triple.some(c => c.rank === s.rank && c.suit === s.suit))) {
+          if (selectedCards.every(s => triple.some(c => c.id === s.id))) {
             if (identifyCardType(triple, currentRank)) results.push(triple);
           }
         }
         // 炸弹
         if (cards.length >= 4) {
           const bomb = cards.slice(0, 4);
-          if (selectedCards.every(s => bomb.some(c => c.rank === s.rank && c.suit === s.suit))) {
+          if (selectedCards.every(s => bomb.some(c => c.id === s.id))) {
             if (identifyCardType(bomb, currentRank)) results.push(bomb);
           }
         }
@@ -935,7 +952,7 @@ export default function GameTable({
               <div className="gt-hand">
                 {myHand.map((card, index) => {
                   const isSelected = selectedCards.some(
-                    c => c.rank === card.rank && c.suit === card.suit
+                    c => c.id === card.id
                   );
                   const isJoker = card.rank === "joker_small" || card.rank === "joker_big";
                   const isBig = card.rank === "joker_big";

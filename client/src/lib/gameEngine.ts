@@ -50,8 +50,8 @@ export function replaceHeartRankWithRank(
 ): Card[] {
   return cards.map(c => {
     if (isHeartRank(c, currentRank)) {
-      // 红心参谋替换为目标点数，保持红心花色
-      return { rank: targetRank, suit: Suit.Hearts };
+      // 红心参谋替换为目标点数，保持红心花色和 id
+      return { id: c.id, rank: targetRank, suit: Suit.Hearts };
     }
     return c;
   });
@@ -246,12 +246,13 @@ export function identifyCardType(cards: Card[], currentRank: Rank): CardType | n
     for (const rank of Array.from(possibleRanks)) {
       const configuredCards = replaceHeartRankWithRank(cards, rank, currentRank);
       // 尝试识别配置后的牌型
+      if (isBomb(configuredCards)) return CardType.Bomb; // 检查炸弹（红心参谋配成的炸弹）
       if (isStraightFlush(configuredCards, currentRank)) return CardType.StraightFlush;
       if (isTripleSequence(configuredCards, currentRank)) return CardType.TripleSequence;
       if (isPairSequence(configuredCards, currentRank)) return CardType.PairSequence;
       if (isSequence(configuredCards, currentRank)) return CardType.Sequence;
       if (isFullHouse(configuredCards)) return CardType.FullHouse;
-      
+
       const groups = groupCardsByRank(configuredCards);
       const groupCount = Object.keys(groups).length;
       if (configuredCards.length === 3 && groupCount === 1) return CardType.Triple;
@@ -373,14 +374,15 @@ export function createDeck(): Card[] {
     Rank.Eight, Rank.Nine, Rank.Ten, Rank.Jack, Rank.Queen,
     Rank.King, Rank.Ace, Rank.Two,
   ];
+  let cardId = 0;  // 用于生成唯一 id
   for (let i = 0; i < 2; i++) {
     for (const suit of suits) {
       for (const rank of ranks) {
-        deck.push({ rank, suit });
+        deck.push({ id: `card-${cardId++}`, rank, suit });
       }
     }
-    deck.push({ rank: Rank.SmallJoker, suit: Suit.Hearts });
-    deck.push({ rank: Rank.BigJoker, suit: Suit.Hearts });
+    deck.push({ id: `card-${cardId++}`, rank: Rank.SmallJoker, suit: Suit.Hearts });
+    deck.push({ id: `card-${cardId++}`, rank: Rank.BigJoker, suit: Suit.Hearts });
   }
   return deck;
 }

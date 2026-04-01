@@ -47,7 +47,7 @@ export default function PlayerHand({
   };
 
   const isCardSelected = (card: Card): boolean => {
-    return selectedCards.some((c) => c.rank === card.rank && c.suit === card.suit);
+    return selectedCards.some((c) => c.id === card.id);
   };
 
   // 按点数排序牌

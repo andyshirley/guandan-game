@@ -327,16 +327,17 @@ export function createDeck(): Card[] {
     Rank.King, Rank.Ace, Rank.Two,
   ];
 
+  let cardId = 0;  // 用于生成唯一 id
   // 两副牌
   for (let i = 0; i < 2; i++) {
     for (const suit of suits) {
       for (const rank of ranks) {
-        deck.push({ rank, suit });
+        deck.push({ id: `card-${cardId++}`, rank, suit });
       }
     }
     // 加入王牌
-    deck.push({ rank: Rank.SmallJoker, suit: Suit.Hearts });
-    deck.push({ rank: Rank.BigJoker, suit: Suit.Hearts });
+    deck.push({ id: `card-${cardId++}`, rank: Rank.SmallJoker, suit: Suit.Hearts });
+    deck.push({ id: `card-${cardId++}`, rank: Rank.BigJoker, suit: Suit.Hearts });
   }
 
   return deck;
