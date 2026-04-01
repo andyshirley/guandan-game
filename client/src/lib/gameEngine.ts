@@ -1260,24 +1260,58 @@ export function validatePlayOrder(cards: Card[], currentRank: Rank): boolean {
 }
 
 /**
+ * 获取升级步数（用于 UI 显示）
+ * 官方规则（2017版）：
+ * - 双下（头游和二游同队）：赢家升 3 级
+ * - 搭档是二游：赢家升 2 级
+ * - 搭档是末游：赢家升 1 级
+ */
+export function getUpgradeSteps(gameState: GameStateData): number {
+  const finishOrder = gameState.finishOrder;
+  if (finishOrder.length < 2) return 1;
+  const first = finishOrder[0];
+  const second = finishOrder[1];
+  const teammate = getTeammate(first);
+  if (getTeam(first) === getTeam(second)) return 3;
+  if (second === teammate) return 2;
+  return 1;
+}
+
+/**
  * 计算升级数
- * 规则：
- * - 赢家升级：升一级（如从打3升到打4）
- * - 输家不升级：保持原级
- * - 过A的处理：A 之后是 2，2 之后回到 3
+ * 官方规则（2017版）：
+ * - 双下（头游和二游同队）：赢家升 3 级
+ * - 搭档是二游：赢家升 2 级
+ * - 搭档是末游：赢家升 1 级
  */
 export function calculateNextRank(currentRank: Rank, winningTeam: Team, gameState: GameStateData): Rank {
-  // 获取赢家队伍中的一个玩家
-  const winner = gameState.players.find(p => getTeam(p.position) === winningTeam);
-  if (!winner) return currentRank;
-  
-  // 赢家升级：使用 LEVEL_ORDER（2 不参与升级）
   const currentIndex = LEVEL_ORDER.indexOf(currentRank);
   if (currentIndex < 0) return currentRank;
   
-  // 升级到下一级，如果已经是 A（最高级）则保持不变
-  if (currentIndex >= LEVEL_ORDER.length - 1) return currentRank; // 打到 A 已是最高级
-  return LEVEL_ORDER[currentIndex + 1];
+  // 根据 finishOrder 计算升级数
+  let upgradeSteps = 1; // 默认升 1 级
+  const finishOrder = gameState.finishOrder;
+  
+  if (finishOrder.length >= 2) {
+    const first = finishOrder[0]; // 头游
+    const second = finishOrder[1]; // 二游
+    const teammate = getTeammate(first); // 头游的搭档
+    
+    // 双下：头游和二游是同一队伍
+    if (getTeam(first) === getTeam(second)) {
+      upgradeSteps = 3;
+    } else if (second === teammate) {
+      // 搭档是二游：升 2 级
+      upgradeSteps = 2;
+    } else {
+      // 搭档是三游或末游：升 1 级
+      upgradeSteps = 1;
+    }
+  }
+  
+  // 升级到对应级别，不超过最高级 A
+  const newIndex = Math.min(currentIndex + upgradeSteps, LEVEL_ORDER.length - 1);
+  return LEVEL_ORDER[newIndex];
 }
 
 /**

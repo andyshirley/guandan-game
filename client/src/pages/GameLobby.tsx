@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import GameTable from "./GameTable";
 import { GameStateData, Rank, Team } from "@shared/types";
-import { calculateNextRank, createInitialGameState, getRankDescription } from "@/lib/gameEngine";
+import { calculateNextRank, createInitialGameState, getRankDescription, getUpgradeSteps } from "@/lib/gameEngine";
 import "./GameLobby.css";
 
 type LobbyView = "lobby" | "playing" | "result";
@@ -194,18 +194,19 @@ export default function GameLobby() {
                 <span className="rank-team-label my-team">我方队伍</span>
                 <span className="rank-current">{getRankDescription(finalState.winningTeam === Team.Team1 ? team1Rank : finalState.currentRank)}</span>
                 {finalState.winningTeam === Team.Team1 && (
-                  <span className="rank-arrow-up">↑ 升级</span>
+                  <span className="rank-arrow-up">↑ 升{getUpgradeSteps(finalState)}级</span>
                 )}
               </div>
               <div className="rank-progress-row">
                 <span className="rank-team-label opp-team">对方队伍</span>
                 <span className="rank-current">{getRankDescription(finalState.winningTeam === Team.Team2 ? team2Rank : finalState.currentRank)}</span>
                 {finalState.winningTeam === Team.Team2 && (
-                  <span className="rank-arrow-up">↑ 升级</span>
+                  <span className="rank-arrow-up">↑ 升{getUpgradeSteps(finalState)}级</span>
                 )}
               </div>
               <div className="rank-next-hint">
                 下一局将打：<strong>{getRankDescription(finalState.winningTeam === Team.Team1 ? team1Rank : team2Rank)}</strong>
+                {getUpgradeSteps(finalState) === 3 && <span className="rank-double-down"> · 双下升三级！</span>}
               </div>
             </div>
 

@@ -124,6 +124,8 @@ export default function GameTable({
   const [tributeGameState, setTributeGameState] = useState<GameStateData | null>(null); // 贡牌还牌中的游戏状态
   const [tributeSelectedCard, setTributeSelectedCard] = useState<Card | null>(null); // 已选择的贡牌/还牌牌
   const [lastPlayKey, setLastPlayKey] = useState(0); // 每次出牌时自增，用于触发动画重播
+  // 过牌浮动提示动画：记录每个玩家最近一次过牌的时间戳
+  const [passAnimKey, setPassAnimKey] = useState<Record<number, number>>({}); // pos -> timestamp
   const lastClickTimeRef = useRef<{ rank: string; suit: string; time: number } | null>(null); // 双击检测
   const singleClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // 单击即出定时器
   const gameStateRef = useRef(gameState); // 始终指向最新 gameState，避免陷旧闭包
@@ -327,6 +329,7 @@ export default function GameTable({
           setStatusMsg(`${getPlayerLabel(pos)} 不要`);
           addPlayRecord(state, pos, [], true);
           updateDanzeroHistory(danzeroHistoryRef.current, pos, [], PlayerPosition.Player0);
+          setPassAnimKey(prev => ({ ...prev, [pos]: Date.now() }));
         }
       } else {
         const passResult = executePass(state, pos);
@@ -335,6 +338,7 @@ export default function GameTable({
           setStatusMsg(`${getPlayerLabel(pos)} 不要`);
           addPlayRecord(state, pos, [], true);
           updateDanzeroHistory(danzeroHistoryRef.current, pos, [], PlayerPosition.Player0);
+          setPassAnimKey(prev => ({ ...prev, [pos]: Date.now() }));
         } else {
           setIsAIThinking(false);
           return;
@@ -443,6 +447,7 @@ export default function GameTable({
     addPlayRecord(gameState, PlayerPosition.Player0, [], true);
     updateDanzeroHistory(danzeroHistoryRef.current, PlayerPosition.Player0, [], PlayerPosition.Player0);
     setSelectedCards([]);
+    setPassAnimKey(prev => ({ ...prev, [PlayerPosition.Player0]: Date.now() }));
     setGameState(result.newState!);
   };
 
@@ -791,6 +796,7 @@ export default function GameTable({
               isThinking={isAIThinking && currentPlayer === PlayerPosition.Player2}
               label="北家"
               teamColor="ally"
+              passAnimKey={passAnimKey[PlayerPosition.Player2]}
             />
           </div>
 
@@ -805,6 +811,7 @@ export default function GameTable({
                 label="西家"
                 teamColor="enemy"
                 compact
+                passAnimKey={passAnimKey[PlayerPosition.Player3]}
               />
             </div>
 
@@ -873,6 +880,7 @@ export default function GameTable({
                 player={gameState.players[PlayerPosition.Player1]}
                 isCurrentTurn={currentPlayer === PlayerPosition.Player1}
                 isThinking={isAIThinking && currentPlayer === PlayerPosition.Player1}
+                passAnimKey={passAnimKey[PlayerPosition.Player1]}
                 label="东家"
                 teamColor="enemy"
                 compact
@@ -881,7 +889,11 @@ export default function GameTable({
           </div>
 
           {/* ===== 玩家区域（南家） ===== */}
-          <div className="gt-player-zone">
+          <div className="gt-player-zone" style={{ position: 'relative' }}>
+            {/* 南家过牌动画 */}
+            {passAnimKey[PlayerPosition.Player0] && (
+              <div key={passAnimKey[PlayerPosition.Player0]} className="gt-pass-float gt-pass-float-south">不要</div>
+            )}
             {/* 报牌提示 */}
             {(() => {
               const reportStatus = getCardReportStatus(myHand);
@@ -1337,6 +1349,7 @@ function PlayerSeat({
   label,
   teamColor,
   compact = false,
+  passAnimKey,
 }: {
   player: { name: string; cardsRemaining: number; position: PlayerPosition };
   isCurrentTurn: boolean;
@@ -1344,9 +1357,13 @@ function PlayerSeat({
   label: string;
   teamColor: "ally" | "enemy";
   compact?: boolean;
+  passAnimKey?: number;
 }) {
   return (
-    <div className={`gt-player-seat${isCurrentTurn ? " active" : ""}${compact ? " compact" : ""} ${teamColor}`}>
+    <div className={`gt-player-seat${isCurrentTurn ? " active" : ""}${compact ? " compact" : ""} ${teamColor}`} style={{ position: 'relative' }}>
+      {passAnimKey && (
+        <div key={passAnimKey} className="gt-pass-float">不要</div>
+      )}
       <div className="gt-player-avatar">
         {isThinking ? (
           <Zap size={16} className="gt-pulse" />

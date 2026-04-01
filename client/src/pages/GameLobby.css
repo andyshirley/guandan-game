@@ -701,6 +701,10 @@
 .rank-next-hint strong {
   color: #d4af37;
 }
+.rank-double-down {
+  color: #ff9f43;
+  font-weight: 700;
+}
 
 /* ===== 响应式 ===== */
 @media (max-width: 900px) {
