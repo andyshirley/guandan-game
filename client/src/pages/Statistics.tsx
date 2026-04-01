@@ -57,7 +57,7 @@ export default function Statistics() {
           <div className="stats-auth-icon"><Crown size={36} /></div>
           <h2>登录查看统计</h2>
           <p>登录后可查看您的游戏数据、胜率和成就</p>
-          <a href={getLoginUrl()} className="stats-login-btn">
+          <a href={getLoginUrl() ?? "#"} className="stats-login-btn">
             <LogIn size={16} />
             <span>立即登录</span>
           </a>

@@ -98,6 +98,15 @@ export enum GameStatus {
 }
 
 /** 游戏回合状态 */
+/** 贡牌与还牌 */
+export interface TributeInfo {
+  fromPlayer: PlayerPosition;  // 进贡者
+  toPlayer: PlayerPosition;    // 接收者
+  tributeCard: Card | null;    // 进贡的牌
+  returnCard: Card | null;     // 还回的牌
+  isCompleted: boolean;        // 是否已完成还牌
+}
+
 export interface GameRound {
   roundNumber: number;
   currentPlayer: PlayerPosition;
@@ -108,6 +117,7 @@ export interface GameRound {
     player: PlayerPosition;
     play: CardPlay | null; // null 表示"不要"
   }>;
+  tribute: TributeInfo[]; // 本轮的贡牌信息
 }
 
 /** 游戏状态 */

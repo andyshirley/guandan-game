@@ -73,7 +73,7 @@ export default function GameHistory() {
           <div className="hist-auth-icon"><Crown size={36} /></div>
           <h2>登录查看历史</h2>
           <p>登录后可查看您的全部对局记录</p>
-          <a href={getLoginUrl()} className="hist-login-btn">
+          <a href={getLoginUrl() ?? "#"} className="hist-login-btn">
             <LogIn size={16} /><span>立即登录</span>
           </a>
         </div>

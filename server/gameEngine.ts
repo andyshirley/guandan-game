@@ -303,6 +303,7 @@ export function createGame(players: Player[], currentRank: Rank = Rank.Three): G
       lastPlayer: null,
       passCount: 0,
       plays: [],
+      tribute: [],
     },
     gameHistory: [],
     winningTeam: null,
